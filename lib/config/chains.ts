@@ -2,6 +2,14 @@ import type { Chain, ChainType } from "@/types";
 
 // Chain configuration for the frontend
 export const CHAINS: Chain[] = [
+  // Mainnets
+  { id: "ethereum", name: "Ethereum", symbol: "ETH", type: "ethereum" },
+  { id: "base", name: "Base", symbol: "ETH", type: "ethereum" },
+  { id: "optimism", name: "Optimism", symbol: "ETH", type: "ethereum" },
+  { id: "arbitrum", name: "Arbitrum One", symbol: "ETH", type: "ethereum" },
+  { id: "polygon", name: "Polygon", symbol: "POL", type: "ethereum" },
+  { id: "solana", name: "Solana", symbol: "SOL", type: "solana" },
+  // Testnets
   { id: "sepolia", name: "Sepolia", symbol: "ETH", type: "ethereum" },
   { id: "base_sepolia", name: "Base Sepolia", symbol: "ETH", type: "ethereum" },
   { id: "optimism_sepolia", name: "Optimism Sepolia", symbol: "ETH", type: "ethereum" },
@@ -22,6 +30,44 @@ export interface ChainConfig {
 }
 
 export const CHAIN_CONFIG: Record<string, ChainConfig> = {
+  // Mainnets
+  ethereum: {
+    caip2: "eip155:1",
+    type: "ethereum",
+    decimals: 18,
+    explorer: { url: "https://etherscan.io/tx/" },
+  },
+  base: {
+    caip2: "eip155:8453",
+    type: "ethereum",
+    decimals: 18,
+    explorer: { url: "https://basescan.org/tx/" },
+  },
+  optimism: {
+    caip2: "eip155:10",
+    type: "ethereum",
+    decimals: 18,
+    explorer: { url: "https://optimistic.etherscan.io/tx/" },
+  },
+  arbitrum: {
+    caip2: "eip155:42161",
+    type: "ethereum",
+    decimals: 18,
+    explorer: { url: "https://arbiscan.io/tx/" },
+  },
+  polygon: {
+    caip2: "eip155:137",
+    type: "ethereum",
+    decimals: 18,
+    explorer: { url: "https://polygonscan.com/tx/" },
+  },
+  solana: {
+    caip2: "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+    type: "solana",
+    decimals: 9,
+    explorer: { url: "https://explorer.solana.com/tx/" },
+  },
+  // Testnets
   sepolia: {
     caip2: "eip155:11155111",
     type: "ethereum",
@@ -91,4 +137,3 @@ export function getChainById(chainId: string): Chain | undefined {
 export function getChainConfig(chainId: string): ChainConfig | undefined {
   return CHAIN_CONFIG[chainId];
 }
-
