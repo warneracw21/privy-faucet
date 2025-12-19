@@ -249,10 +249,10 @@ export default function Home() {
               }`}
             >
               <span className="font-medium">{chain.name}</span>
-              <span className={`text-xs ${
+              <span className={`text-sm font-mono font-semibold px-2 py-0.5 rounded ${
                 selectedChain.id === chain.id 
-                  ? "text-primary-foreground/70" 
-                  : "text-muted-foreground"
+                  ? "bg-primary-foreground/20 text-primary-foreground" 
+                  : "bg-muted text-foreground"
               }`}>
                 {loading ? "..." : getBalanceForChain(chain.id)}
               </span>
