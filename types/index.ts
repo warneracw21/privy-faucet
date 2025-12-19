@@ -1,11 +1,22 @@
 // Chain types
 export type ChainType = "ethereum" | "solana";
+export type NetworkMode = "mainnet" | "testnet";
 
 export interface Chain {
   id: string;
   name: string;
   symbol: string;
   type: ChainType;
+}
+
+// Unified chain group (mainnet + testnet pair)
+export interface ChainGroup {
+  id: string; // e.g., "ethereum", "base"
+  name: string; // Display name, e.g., "Ethereum", "Base"
+  symbol: string;
+  type: ChainType;
+  mainnet: string; // chain ID for mainnet
+  testnet: string; // chain ID for testnet
 }
 
 // Wallet types

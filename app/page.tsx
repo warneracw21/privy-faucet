@@ -7,8 +7,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { useBalance } from "@/hooks/use-balance";
 import { useTransactionStatus, isTransactionSuccessful } from "@/hooks/use-transaction-status";
-import { CHAINS } from "@/lib/config/chains";
-import type { Chain, PendingTransaction } from "@/types";
+import { CHAINS, CHAIN_GROUPS, getActiveChainId } from "@/lib/config/chains";
+import type { ChainGroup, NetworkMode, PendingTransaction } from "@/types";
 
 // Ethereum address: 0x followed by 40 hex characters
 const ETHEREUM_ADDRESS_REGEX = /^0x[a-fA-F0-9]{40}$/;
@@ -16,16 +16,12 @@ const ETHEREUM_ADDRESS_REGEX = /^0x[a-fA-F0-9]{40}$/;
 // Solana address: base58 encoded, 32-44 characters (no 0, O, I, l)
 const SOLANA_ADDRESS_REGEX = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
 
-// Mainnet chain IDs (no testnet suffix)
-const MAINNET_CHAIN_IDS = ["ethereum", "base", "optimism", "arbitrum", "polygon", "solana"];
-
-const isMainnet = (chainId: string) => MAINNET_CHAIN_IDS.includes(chainId);
-
 export default function Home() {
   const { authenticated, login, logout, user, getAccessToken } = usePrivy();
   const { data: balances, isLoading: loading, refetch: refetchBalances } = useBalance(authenticated);
   
-  const [selectedChain, setSelectedChain] = useState<Chain>(CHAINS[0]);
+  const [networkMode, setNetworkMode] = useState<NetworkMode>("testnet");
+  const [selectedGroup, setSelectedGroup] = useState<ChainGroup>(CHAIN_GROUPS[0]);
   const [walletAddress, setWalletAddress] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [amount, setAmount] = useState("");
@@ -33,6 +29,10 @@ export default function Home() {
   const [submitting, setSubmitting] = useState(false);
   const [pendingTx, setPendingTx] = useState<PendingTransaction | null>(null);
   const [txResult, setTxResult] = useState<{ hash: string; explorerUrl: string; status: string } | null>(null);
+
+  // Get the active chain based on selected group and network mode
+  const activeChainId = getActiveChainId(selectedGroup, networkMode);
+  const activeChain = CHAINS.find(c => c.id === activeChainId)!;
 
   // Poll for transaction status
   const { data: txStatus } = useTransactionStatus(pendingTx?.id ?? null);
@@ -136,8 +136,8 @@ export default function Home() {
       return;
     }
 
-    if (!validateAddress(walletAddress, selectedChain.type)) {
-      if (selectedChain.type === "ethereum") {
+    if (!validateAddress(walletAddress, activeChain.type)) {
+      if (activeChain.type === "ethereum") {
         setError("Invalid Ethereum address. Must be 0x followed by 40 hex characters.");
       } else {
         setError("Invalid Solana address. Must be 32-44 base58 characters.");
@@ -151,9 +151,9 @@ export default function Home() {
       return;
     }
 
-    const availableBalance = getRawBalanceForChain(selectedChain.id);
+    const availableBalance = getRawBalanceForChain(activeChain.id);
     if (requestedAmount > availableBalance) {
-      setError(`Insufficient faucet balance. Available: ${availableBalance.toFixed(4)} ${selectedChain.symbol}`);
+      setError(`Insufficient faucet balance. Available: ${availableBalance.toFixed(4)} ${activeChain.symbol}`);
       return;
     }
 
@@ -175,7 +175,7 @@ export default function Home() {
         body: JSON.stringify({
           walletAddress,
           amount: requestedAmount,
-          chain: selectedChain.id,
+          chain: activeChain.id,
         }),
       });
 
@@ -229,35 +229,63 @@ export default function Home() {
     <div className="flex min-h-screen bg-background">
       {/* Left Sidebar - Chain Selection */}
       <aside className="w-80 border-r border-border bg-card p-4">
-        <div className="mb-6">
+        <div className="mb-4">
           <h2 className="text-lg font-semibold text-foreground">Chains</h2>
           <p className="text-sm text-muted-foreground">Select a network</p>
         </div>
-        
+
+        {/* Network Mode Toggle */}
+        <div className="mb-4 p-1 bg-muted rounded-lg flex">
+          <button
+            onClick={() => setNetworkMode("testnet")}
+            className={`flex-1 py-2 px-3 rounded-md text-sm font-medium transition-colors ${
+              networkMode === "testnet"
+                ? "bg-background text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            Testnet
+          </button>
+          <button
+            onClick={() => setNetworkMode("mainnet")}
+            className={`flex-1 py-2 px-3 rounded-md text-sm font-medium transition-colors ${
+              networkMode === "mainnet"
+                ? "bg-background text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            Mainnet
+          </button>
+        </div>
+
         <nav className="space-y-1">
-          {CHAINS.map((chain) => (
-            <button
-              key={chain.id}
-              onClick={() => {
-                setSelectedChain(chain);
-                setError(null);
-              }}
-              className={`w-full flex items-center justify-between gap-4 px-3 py-2.5 rounded-lg text-left transition-colors ${
-                selectedChain.id === chain.id
-                  ? "bg-primary text-primary-foreground"
-                  : "hover:bg-muted text-foreground"
-              }`}
-            >
-              <span className="font-medium">{chain.name}</span>
-              <span className={`text-sm font-mono font-semibold px-2 py-0.5 rounded ${
-                selectedChain.id === chain.id 
-                  ? "bg-primary-foreground/20 text-primary-foreground" 
-                  : "bg-muted text-foreground"
-              }`}>
-                {loading ? "..." : getBalanceForChain(chain.id)}
-              </span>
-            </button>
-          ))}
+          {CHAIN_GROUPS.map((group) => {
+            const chainId = getActiveChainId(group, networkMode);
+            const isSelected = selectedGroup.id === group.id;
+            return (
+              <button
+                key={group.id}
+                onClick={() => {
+                  setSelectedGroup(group);
+                  setError(null);
+                }}
+                className={`w-full flex items-center justify-between gap-4 px-3 py-2.5 rounded-lg text-left transition-colors ${
+                  isSelected
+                    ? "bg-primary text-primary-foreground"
+                    : "hover:bg-muted text-foreground"
+                }`}
+              >
+                <span className="font-medium">{group.name}</span>
+                <span className={`text-sm font-mono font-semibold px-2 py-0.5 rounded ${
+                  isSelected 
+                    ? "bg-primary-foreground/20 text-primary-foreground" 
+                    : "bg-muted text-foreground"
+                }`}>
+                  {loading ? "..." : getBalanceForChain(chainId)}
+                </span>
+              </button>
+            );
+          })}
         </nav>
 
         <div className="mt-8 pt-4 border-t border-border">
@@ -340,25 +368,24 @@ export default function Home() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                {selectedChain.name} Faucet
+                {activeChain.name} Faucet
               </CardTitle>
               <CardDescription>
-                Request {selectedChain.symbol} tokens on {selectedChain.name}
+                Request {activeChain.symbol} tokens on {activeChain.name}
               </CardDescription>
-              {isMainnet(selectedChain.id) && (
-                <div className="mt-3 p-2 rounded-md bg-[var(--color-bg-warning)] border border-[var(--color-border-warning)]">
-                  <p className="text-xs text-[var(--color-text-warning)] flex items-center gap-1.5">
-                    <span>⚠️</span>
-                    <span className="font-medium">This is real money!</span> You are on a mainnet chain.
-                  </p>
-                </div>
-              )}
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <p className="text-sm text-muted-foreground mb-1">Faucet Balance</p>
+                <div className="flex items-center justify-between mb-1">
+                  <p className="text-sm text-muted-foreground">Faucet Balance</p>
+                  {networkMode === "mainnet" && (
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-[var(--color-bg-warning)] text-[var(--color-text-warning)] border border-[var(--color-border-warning)]">
+                      ⚠️ Real money!
+                    </span>
+                  )}
+                </div>
                 <p className="text-2xl font-bold">
-                  {loading ? "Loading..." : getBalanceForChain(selectedChain.id)}
+                  {loading ? "Loading..." : getBalanceForChain(activeChain.id)}
                 </p>
               </div>
 
@@ -368,7 +395,7 @@ export default function Home() {
                 </label>
                 <Input
                   id="wallet"
-                  placeholder={selectedChain.type === "solana" 
+                  placeholder={activeChain.type === "solana" 
                     ? "Enter Solana address..." 
                     : "0x..."
                   }
@@ -382,7 +409,7 @@ export default function Home() {
 
               <div className="space-y-2">
                 <label htmlFor="amount" className="text-sm font-medium">
-                  Amount ({selectedChain.symbol})
+                  Amount ({activeChain.symbol})
                 </label>
                 <Input
                   id="amount"
@@ -407,7 +434,7 @@ export default function Home() {
                 onClick={handleRequest}
                 disabled={submitting || !!pendingTx}
               >
-                {submitting ? "Submitting..." : pendingTx ? "Confirming..." : `Request ${selectedChain.symbol}`}
+                {submitting ? "Submitting..." : pendingTx ? "Confirming..." : `Request ${activeChain.symbol}`}
               </Button>
 
               {/* Pending transaction status */}

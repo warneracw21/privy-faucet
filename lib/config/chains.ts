@@ -1,4 +1,4 @@
-import type { Chain, ChainType } from "@/types";
+import type { Chain, ChainType, ChainGroup, NetworkMode } from "@/types";
 
 // Chain configuration for the frontend
 export const CHAINS: Chain[] = [
@@ -19,6 +19,22 @@ export const CHAINS: Chain[] = [
   { id: "abstract_testnet", name: "Abstract Testnet", symbol: "ETH", type: "ethereum" },
   { id: "solana_devnet", name: "Solana Devnet", symbol: "SOL", type: "solana" },
 ];
+
+// Unified chain groups (mainnet + testnet pairs)
+export const CHAIN_GROUPS: ChainGroup[] = [
+  { id: "ethereum", name: "Ethereum", symbol: "ETH", type: "ethereum", mainnet: "ethereum", testnet: "sepolia" },
+  { id: "base", name: "Base", symbol: "ETH", type: "ethereum", mainnet: "base", testnet: "base_sepolia" },
+  { id: "optimism", name: "Optimism", symbol: "ETH", type: "ethereum", mainnet: "optimism", testnet: "optimism_sepolia" },
+  { id: "arbitrum", name: "Arbitrum", symbol: "ETH", type: "ethereum", mainnet: "arbitrum", testnet: "arbitrum_sepolia" },
+  { id: "polygon", name: "Polygon", symbol: "POL", type: "ethereum", mainnet: "polygon", testnet: "polygon_amoy" },
+  { id: "abstract", name: "Abstract", symbol: "ETH", type: "ethereum", mainnet: "abstract", testnet: "abstract_testnet" },
+  { id: "solana", name: "Solana", symbol: "SOL", type: "solana", mainnet: "solana", testnet: "solana_devnet" },
+];
+
+// Helper to get the active chain ID for a group based on network mode
+export function getActiveChainId(group: ChainGroup, mode: NetworkMode): string {
+  return mode === "mainnet" ? group.mainnet : group.testnet;
+}
 
 // Extended chain configuration for the backend (includes CAIP-2, decimals, explorer)
 export interface ChainConfig {
