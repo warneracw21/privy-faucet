@@ -1,8 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
 import type { TransactionStatus, TransactionStatusResponse } from "@/types";
+import { usePrivy } from "@privy-io/react-auth";
 
-async function fetchTransactionStatus(transactionId: string): Promise<TransactionStatusResponse> {
-  const res = await fetch(`/api/faucet/transaction/${transactionId}`);
+async function fetchTransactionStatus(transactionId: string, accessToken: string): Promise<TransactionStatusResponse> {
+  const res = await fetch(`/api/faucet/transaction/${transactionId}`, {
+    headers: {
+      "Authorization": `Bearer ${accessToken}`,
+    },
+  });
   if (!res.ok) {
     throw new Error("Failed to fetch transaction status");
   }
@@ -10,9 +15,16 @@ async function fetchTransactionStatus(transactionId: string): Promise<Transactio
 }
 
 export function useTransactionStatus(transactionId: string | null) {
+  const { getAccessToken } = usePrivy();
   return useQuery({
     queryKey: ["transaction-status", transactionId],
-    queryFn: () => fetchTransactionStatus(transactionId!),
+    queryFn: async () => {
+      const accessToken = await getAccessToken();
+      if (!accessToken) {
+        throw new Error("Failed to get access token");
+      }
+      return fetchTransactionStatus(transactionId!, accessToken);
+    },
     enabled: !!transactionId,
     refetchInterval: (query) => {
       // Stop polling once transaction is final
