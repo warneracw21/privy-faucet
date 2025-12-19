@@ -16,6 +16,11 @@ const ETHEREUM_ADDRESS_REGEX = /^0x[a-fA-F0-9]{40}$/;
 // Solana address: base58 encoded, 32-44 characters (no 0, O, I, l)
 const SOLANA_ADDRESS_REGEX = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
 
+// Mainnet chain IDs (no testnet suffix)
+const MAINNET_CHAIN_IDS = ["ethereum", "base", "optimism", "arbitrum", "polygon", "solana"];
+
+const isMainnet = (chainId: string) => MAINNET_CHAIN_IDS.includes(chainId);
+
 export default function Home() {
   const { authenticated, login, logout, user, getAccessToken } = usePrivy();
   const { data: balances, isLoading: loading, refetch: refetchBalances } = useBalance(authenticated);
@@ -270,7 +275,10 @@ export default function Home() {
         <div className="max-w-xl">
           {/* Faucet Wallet Addresses */}
           <div className="mb-6 p-4 rounded-lg bg-muted/50 border border-border">
-            <h3 className="text-sm font-medium mb-3">Faucet Wallet Addresses</h3>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-medium">Faucet Wallet Addresses</h3>
+              <span className="text-xs text-muted-foreground italic">Don&apos;t be shy, contribute! 💸</span>
+            </div>
             <div className="space-y-3">
               <div className="space-y-1">
                 <span className="text-sm text-muted-foreground">Ethereum</span>
@@ -337,6 +345,14 @@ export default function Home() {
               <CardDescription>
                 Request {selectedChain.symbol} tokens on {selectedChain.name}
               </CardDescription>
+              {isMainnet(selectedChain.id) && (
+                <div className="mt-3 p-2 rounded-md bg-[var(--color-bg-warning)] border border-[var(--color-border-warning)]">
+                  <p className="text-xs text-[var(--color-text-warning)] flex items-center gap-1.5">
+                    <span>⚠️</span>
+                    <span className="font-medium">This is real money!</span> You are on a mainnet chain.
+                  </p>
+                </div>
+              )}
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
