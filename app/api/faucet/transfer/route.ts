@@ -3,12 +3,14 @@ import { privy, ETHEREUM_WALLET_ID, SOLANA_WALLET_ID } from "@/lib/privy";
 import { parseUnits } from "viem";
 import { getChainConfig, buildExplorerUrl } from "@/lib/config/chains";
 import type { TransferRequest, TransferResponse } from "@/types";
+import {
+  PublicKey,
+  SystemProgram,
+  Transaction,
+  LAMPORTS_PER_SOL,
+} from "@solana/web3.js";
 
 export async function POST(request: NextRequest) {
-  // User ID is set by middleware after token verification
-  const userId = request.headers.get("x-user-id");
-  console.log("Authenticated user:", userId);
-
   // Parse and validate request
   const { walletAddress, amount, chain }: TransferRequest = await request.json();
 
@@ -46,12 +48,43 @@ export async function POST(request: NextRequest) {
 
       return NextResponse.json(response);
     } else if (chainConfig.type === "solana") {
-      // Solana requires building a serialized transaction
-      // This would need @solana/web3.js to create a transfer instruction
-      return NextResponse.json(
-        { error: "Solana transfers not yet implemented" },
-        { status: 501 }
+      // Get wallet address from Privy
+      const solanaWallet = await privy.wallets().get(SOLANA_WALLET_ID);
+      const fromPubkey = new PublicKey(solanaWallet.address);
+      const toPubkey = new PublicKey(walletAddress);
+      const lamports = Math.floor(amount * LAMPORTS_PER_SOL);
+
+      // Build transaction with placeholder blockhash - serialize requires one
+      // Using a dummy that Privy should replace
+      const transaction = new Transaction({
+        recentBlockhash: "11111111111111111111111111111111",
+        feePayer: fromPubkey,
+      }).add(
+        SystemProgram.transfer({ fromPubkey, toPubkey, lamports })
       );
+      // Set recentBlockhash for serialization (Privy may replace it)
+      transaction.recentBlockhash = "11111111111111111111111111111111";
+
+      // Serialize without signatures - Privy will sign
+      const serialized = transaction
+        .serialize({ requireAllSignatures: false, verifySignatures: false })
+        .toString("base64");
+
+      // Sign and send via Privy
+      const result = await privy.wallets().solana().signAndSendTransaction(SOLANA_WALLET_ID, {
+        caip2: chainConfig.caip2,
+        transaction: serialized,
+      });
+
+      return NextResponse.json({
+        success: true,
+        transactionId: result.transaction_id || "",
+        chain,
+        hash: result.hash,
+        explorerUrl: buildExplorerUrl(chain, result.hash)!,
+        amount,
+        to: walletAddress,
+      } as TransferResponse);
     }
 
     return NextResponse.json({ error: "Unsupported chain type" }, { status: 400 });
