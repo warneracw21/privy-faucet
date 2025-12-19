@@ -1,188 +1,263 @@
-import type { Chain, ChainType, ChainGroup, NetworkMode } from "@/types";
+import type { ChainConfig, NetworkMode } from "@/types";
 
-// Chain configuration for the frontend
-export const CHAINS: Chain[] = [
-  // Mainnets
-  { id: "ethereum", name: "Ethereum", symbol: "ETH", type: "ethereum" },
-  { id: "base", name: "Base", symbol: "ETH", type: "ethereum" },
-  { id: "optimism", name: "Optimism", symbol: "ETH", type: "ethereum" },
-  { id: "arbitrum", name: "Arbitrum One", symbol: "ETH", type: "ethereum" },
-  { id: "polygon", name: "Polygon", symbol: "POL", type: "ethereum" },
-  { id: "abstract", name: "Abstract", symbol: "ETH", type: "ethereum" },
-  { id: "solana", name: "Solana", symbol: "SOL", type: "solana" },
-  // Testnets
-  { id: "sepolia", name: "Sepolia", symbol: "ETH", type: "ethereum" },
-  { id: "base_sepolia", name: "Base Sepolia", symbol: "ETH", type: "ethereum" },
-  { id: "optimism_sepolia", name: "Optimism Sepolia", symbol: "ETH", type: "ethereum" },
-  { id: "arbitrum_sepolia", name: "Arbitrum Sepolia", symbol: "ETH", type: "ethereum" },
-  { id: "polygon_amoy", name: "Polygon Amoy", symbol: "POL", type: "ethereum" },
-  { id: "abstract_testnet", name: "Abstract Testnet", symbol: "ETH", type: "ethereum" },
-  { id: "solana_devnet", name: "Solana Devnet", symbol: "SOL", type: "solana" },
-];
-
-// Unified chain groups (mainnet + testnet pairs)
-export const CHAIN_GROUPS: ChainGroup[] = [
-  { id: "ethereum", name: "Ethereum", symbol: "ETH", type: "ethereum", mainnet: "ethereum", testnet: "sepolia" },
-  { id: "base", name: "Base", symbol: "ETH", type: "ethereum", mainnet: "base", testnet: "base_sepolia" },
-  { id: "optimism", name: "Optimism", symbol: "ETH", type: "ethereum", mainnet: "optimism", testnet: "optimism_sepolia" },
-  { id: "arbitrum", name: "Arbitrum", symbol: "ETH", type: "ethereum", mainnet: "arbitrum", testnet: "arbitrum_sepolia" },
-  { id: "polygon", name: "Polygon", symbol: "POL", type: "ethereum", mainnet: "polygon", testnet: "polygon_amoy" },
-  { id: "abstract", name: "Abstract", symbol: "ETH", type: "ethereum", mainnet: "abstract", testnet: "abstract_testnet" },
-  { id: "solana", name: "Solana", symbol: "SOL", type: "solana", mainnet: "solana", testnet: "solana_devnet" },
-];
-
-// Helper to get the active chain ID for a group based on network mode
-export function getActiveChainId(group: ChainGroup, mode: NetworkMode): string {
-  return mode === "mainnet" ? group.mainnet : group.testnet;
-}
-
-// Extended chain configuration for the backend (includes CAIP-2, decimals, explorer)
-export interface ChainConfig {
-  caip2: string;
-  type: ChainType;
-  decimals: number;
-  explorer: {
-    url: string;
-    suffix?: string;
-  };
-  // Alchemy RPC path for chains not supported by Privy's balance endpoint
-  // Will be combined with ALCHEMY_API_KEY env var
-  alchemyRpcPath?: string;
-}
-
-// Build full RPC URL from Alchemy path
-export function getRpcUrl(chainId: string): string | null {
-  const config = CHAIN_CONFIG[chainId];
-  if (!config?.alchemyRpcPath) return null;
-  
-  const apiKey = process.env.ALCHEMY_API_KEY;
-  if (!apiKey) {
-    console.warn("ALCHEMY_API_KEY not set");
-    return null;
-  }
-  
-  return `${config.alchemyRpcPath}${apiKey}`;
-}
-
-export const CHAIN_CONFIG: Record<string, ChainConfig> = {
-  // Mainnets
+/**
+ * CHAIN CONFIGURATION
+ * 
+ * To add a new chain, just add an entry here. That's it!
+ * 
+ * - If Privy supports the chain natively, set `privyChainId` on each network
+ * - If Privy doesn't support it, set `rpcUrl` instead (we'll fetch balance via RPC)
+ * 
+ * Example (Privy-supported):
+ * ```
+ * mychain: {
+ *   name: "My Chain",
+ *   type: "ethereum",
+ *   mainnet: { caip2: "eip155:123", explorerUrl: "...", privyChainId: "mychain" },
+ *   testnet: { caip2: "eip155:456", explorerUrl: "...", privyChainId: "mychain_testnet" },
+ *   tokens: { native: { symbol: "MYC", decimals: 18 } },
+ * }
+ * ```
+ * 
+ * Example (Custom RPC):
+ * ```
+ * mychain: {
+ *   name: "My Chain",
+ *   type: "ethereum",
+ *   mainnet: { caip2: "eip155:123", explorerUrl: "...", rpcUrl: "https://rpc.mychain.com" },
+ *   testnet: { caip2: "eip155:456", explorerUrl: "...", rpcUrl: "https://testnet.mychain.com" },
+ *   tokens: { native: { symbol: "MYC", decimals: 18 } },
+ * }
+ * ```
+ */
+export const CHAINS = {
   ethereum: {
-    caip2: "eip155:1",
+    name: "Ethereum",
     type: "ethereum",
-    decimals: 18,
-    explorer: { url: "https://etherscan.io/tx/" },
+    mainnet: {
+      caip2: "eip155:1",
+      explorerUrl: "https://etherscan.io/tx/",
+      privyChainId: "ethereum",
+    },
+    testnet: {
+      caip2: "eip155:11155111",
+      explorerUrl: "https://sepolia.etherscan.io/tx/",
+      privyChainId: "sepolia",
+    },
+    tokens: {
+      native: { symbol: "ETH", decimals: 18 },
+    },
   },
-  base: {
-    caip2: "eip155:8453",
-    type: "ethereum",
-    decimals: 18,
-    explorer: { url: "https://basescan.org/tx/" },
-  },
-  optimism: {
-    caip2: "eip155:10",
-    type: "ethereum",
-    decimals: 18,
-    explorer: { url: "https://optimistic.etherscan.io/tx/" },
-  },
-  arbitrum: {
-    caip2: "eip155:42161",
-    type: "ethereum",
-    decimals: 18,
-    explorer: { url: "https://arbiscan.io/tx/" },
-  },
-  polygon: {
-    caip2: "eip155:137",
-    type: "ethereum",
-    decimals: 18,
-    explorer: { url: "https://polygonscan.com/tx/" },
-  },
-  abstract: {
-    caip2: "eip155:2741",
-    type: "ethereum",
-    decimals: 18,
-    explorer: { url: "https://abscan.org/tx/" },
-    alchemyRpcPath: "https://abstract-mainnet.g.alchemy.com/v2/",
-  },
-  solana: {
-    caip2: "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
-    type: "solana",
-    decimals: 9,
-    explorer: { url: "https://explorer.solana.com/tx/" },
-  },
-  // Testnets
-  sepolia: {
-    caip2: "eip155:11155111",
-    type: "ethereum",
-    decimals: 18,
-    explorer: { url: "https://sepolia.etherscan.io/tx/" },
-  },
-  base_sepolia: {
-    caip2: "eip155:84532",
-    type: "ethereum",
-    decimals: 18,
-    explorer: { url: "https://sepolia.basescan.org/tx/" },
-  },
-  optimism_sepolia: {
-    caip2: "eip155:11155420",
-    type: "ethereum",
-    decimals: 18,
-    explorer: { url: "https://sepolia-optimism.etherscan.io/tx/" },
-  },
-  arbitrum_sepolia: {
-    caip2: "eip155:421614",
-    type: "ethereum",
-    decimals: 18,
-    explorer: { url: "https://sepolia.arbiscan.io/tx/" },
-  },
-  polygon_amoy: {
-    caip2: "eip155:80002",
-    type: "ethereum",
-    decimals: 18,
-    explorer: { url: "https://amoy.polygonscan.com/tx/" },
-  },
-  abstract_testnet: {
-    caip2: "eip155:11124",
-    type: "ethereum",
-    decimals: 18,
-    explorer: { url: "https://sepolia.abscan.org/tx/" },
-    alchemyRpcPath: "https://abstract-testnet.g.alchemy.com/v2/",
-  },
-  solana_devnet: {
-    caip2: "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
-    type: "solana",
-    decimals: 9,
-    explorer: { url: "https://explorer.solana.com/tx/", suffix: "?cluster=devnet" },
-  },
-};
 
-// Map CAIP-2 to explorer config (for transaction status endpoint)
-export const CAIP2_TO_EXPLORER: Record<string, { url: string; suffix?: string }> = Object.fromEntries(
-  Object.values(CHAIN_CONFIG).map((config) => [config.caip2, config.explorer])
-);
+  base: {
+    name: "Base",
+    type: "ethereum",
+    mainnet: {
+      caip2: "eip155:8453",
+      explorerUrl: "https://basescan.org/tx/",
+      privyChainId: "base",
+    },
+    testnet: {
+      caip2: "eip155:84532",
+      explorerUrl: "https://sepolia.basescan.org/tx/",
+      privyChainId: "base_sepolia",
+    },
+    tokens: {
+      native: { symbol: "ETH", decimals: 18 },
+    },
+  },
+
+  optimism: {
+    name: "Optimism",
+    type: "ethereum",
+    mainnet: {
+      caip2: "eip155:10",
+      explorerUrl: "https://optimistic.etherscan.io/tx/",
+      privyChainId: "optimism",
+    },
+    testnet: {
+      caip2: "eip155:11155420",
+      explorerUrl: "https://sepolia-optimism.etherscan.io/tx/",
+      privyChainId: "optimism_sepolia",
+    },
+    tokens: {
+      native: { symbol: "ETH", decimals: 18 },
+    },
+  },
+
+  arbitrum: {
+    name: "Arbitrum",
+    type: "ethereum",
+    mainnet: {
+      caip2: "eip155:42161",
+      explorerUrl: "https://arbiscan.io/tx/",
+      privyChainId: "arbitrum",
+    },
+    testnet: {
+      caip2: "eip155:421614",
+      explorerUrl: "https://sepolia.arbiscan.io/tx/",
+      privyChainId: "arbitrum_sepolia",
+    },
+    tokens: {
+      native: { symbol: "ETH", decimals: 18 },
+    },
+  },
+
+  polygon: {
+    name: "Polygon",
+    type: "ethereum",
+    mainnet: {
+      caip2: "eip155:137",
+      explorerUrl: "https://polygonscan.com/tx/",
+      privyChainId: "polygon",
+    },
+    testnet: {
+      caip2: "eip155:80002",
+      explorerUrl: "https://amoy.polygonscan.com/tx/",
+      privyChainId: "polygon_amoy",
+    },
+    tokens: {
+      native: { symbol: "POL", decimals: 18 },
+    },
+  },
+
+  // Abstract uses custom RPC (not supported by Privy balance API)
+  abstract: {
+    name: "Abstract",
+    type: "ethereum",
+    mainnet: {
+      caip2: "eip155:2741",
+      explorerUrl: "https://abscan.org/tx/",
+      rpcUrl: `https://abstract-mainnet.g.alchemy.com/v2/${process.env.ALCHEMY_API_KEY}`,
+    },
+    testnet: {
+      caip2: "eip155:11124",
+      explorerUrl: "https://sepolia.abscan.org/tx/",
+      rpcUrl: `https://abstract-testnet.g.alchemy.com/v2/${process.env.ALCHEMY_API_KEY}`,
+    },
+    tokens: {
+      native: { symbol: "ETH", decimals: 18 },
+    },
+  },
+
+  solana: {
+    name: "Solana",
+    type: "solana",
+    mainnet: {
+      caip2: "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+      explorerUrl: "https://explorer.solana.com/tx/",
+      privyChainId: "solana",
+    },
+    testnet: {
+      caip2: "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+      explorerUrl: "https://explorer.solana.com/tx/",
+      explorerSuffix: "?cluster=devnet",
+      privyChainId: "solana_devnet",
+    },
+    tokens: {
+      native: { symbol: "SOL", decimals: 9 },
+    },
+  },
+} as const satisfies Record<string, ChainConfig>;
+
+// Derive chain IDs from the config
+export type ChainId = keyof typeof CHAINS;
+export const CHAIN_IDS = Object.keys(CHAINS) as ChainId[];
+
+// Helper to get chain config
+export function getChain(chainId: string): ChainConfig | undefined {
+  return CHAINS[chainId as ChainId];
+}
+
+// Helper to get network config for a chain
+export function getNetwork(chainId: string, mode: NetworkMode) {
+  const chain = CHAINS[chainId as ChainId];
+  if (!chain) return undefined;
+  return chain[mode];
+}
 
 // Helper to build explorer URL
-export function buildExplorerUrl(chainIdOrCaip2: string, hash: string): string | null {
-  // Try chain ID first
-  let config = CHAIN_CONFIG[chainIdOrCaip2];
-  if (config) {
-    return `${config.explorer.url}${hash}${config.explorer.suffix || ""}`;
-  }
+export function buildExplorerUrl(chainId: string, mode: NetworkMode, hash: string): string | null {
+  const network = getNetwork(chainId, mode);
+  if (!network) return null;
+  const suffix = "explorerSuffix" in network ? network.explorerSuffix : "";
+  return `${network.explorerUrl}${hash}${suffix || ""}`;
+}
 
-  // Try CAIP-2
-  const explorer = CAIP2_TO_EXPLORER[chainIdOrCaip2];
-  if (explorer) {
-    return `${explorer.url}${hash}${explorer.suffix || ""}`;
+// Helper to build explorer URL from CAIP-2 (for transaction status endpoint)
+export function buildExplorerUrlFromCaip2(caip2: string, hash: string): string | null {
+  for (const chainId of CHAIN_IDS) {
+    const chain = CHAINS[chainId];
+    if (chain.mainnet.caip2 === caip2) {
+      const suffix = "explorerSuffix" in chain.mainnet ? chain.mainnet.explorerSuffix : "";
+      return `${chain.mainnet.explorerUrl}${hash}${suffix || ""}`;
+    }
+    if (chain.testnet.caip2 === caip2) {
+      const suffix = "explorerSuffix" in chain.testnet ? chain.testnet.explorerSuffix : "";
+      return `${chain.testnet.explorerUrl}${hash}${suffix || ""}`;
+    }
   }
-
   return null;
 }
 
-// Get chain by ID
-export function getChainById(chainId: string): Chain | undefined {
-  return CHAINS.find((c) => c.id === chainId);
+// Get Privy chain IDs for balance fetching (grouped by wallet type)
+export function getPrivyChainIds() {
+  const evm: { mainnet: string[]; testnet: string[] } = { mainnet: [], testnet: [] };
+  const solana: { mainnet: string[]; testnet: string[] } = { mainnet: [], testnet: [] };
+
+  for (const chainId of CHAIN_IDS) {
+    const chain = CHAINS[chainId];
+    const target = chain.type === "ethereum" ? evm : solana;
+
+    if ("privyChainId" in chain.mainnet && chain.mainnet.privyChainId) {
+      target.mainnet.push(chain.mainnet.privyChainId);
+    }
+    if ("privyChainId" in chain.testnet && chain.testnet.privyChainId) {
+      target.testnet.push(chain.testnet.privyChainId);
+    }
+  }
+
+  return { evm, solana };
 }
 
-// Get chain config by ID
-export function getChainConfig(chainId: string): ChainConfig | undefined {
-  return CHAIN_CONFIG[chainId];
+// Get chains that need custom RPC for balance fetching
+export function getCustomRpcChains(mode: NetworkMode) {
+  const result: Array<{
+    chainId: ChainId;
+    rpcUrl: string;
+    balanceKey: string;
+    symbol: string;
+    decimals: number;
+  }> = [];
+
+  for (const chainId of CHAIN_IDS) {
+    const chain = CHAINS[chainId];
+    const network = chain[mode];
+
+    if ("rpcUrl" in network && network.rpcUrl && !("privyChainId" in network && network.privyChainId)) {
+      result.push({
+        chainId,
+        rpcUrl: network.rpcUrl,
+        balanceKey: mode === "mainnet" ? chainId : `${chainId}_testnet`,
+        symbol: chain.tokens.native.symbol,
+        decimals: chain.tokens.native.decimals,
+      });
+    }
+  }
+
+  return result;
+}
+
+// Get balance key for a chain (used by frontend to find balance in API response)
+export function getBalanceKey(chainId: ChainId, mode: NetworkMode): string {
+  const chain = CHAINS[chainId];
+  const network = chain[mode];
+
+  // If Privy-supported, use the privyChainId
+  if ("privyChainId" in network && network.privyChainId) {
+    return network.privyChainId;
+  }
+
+  // For custom RPC chains, use chainId_testnet convention
+  return mode === "mainnet" ? chainId : `${chainId}_testnet`;
 }

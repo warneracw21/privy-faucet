@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getTransactionStatus, isTransactionFinal } from "@/lib/transaction";
-import { buildExplorerUrl } from "@/lib/config/chains";
+import { buildExplorerUrlFromCaip2 } from "@/lib/config/chains";
 import type { TransactionStatusResponse } from "@/types";
 
 export async function GET(
@@ -17,7 +17,7 @@ export async function GET(
     const transaction = await getTransactionStatus(transactionId);
     const isFinal = isTransactionFinal(transaction.status);
     const explorerUrl = transaction.transaction_hash
-      ? buildExplorerUrl(transaction.caip2, transaction.transaction_hash)
+      ? buildExplorerUrlFromCaip2(transaction.caip2, transaction.transaction_hash)
       : null;
 
     const response: TransactionStatusResponse = {

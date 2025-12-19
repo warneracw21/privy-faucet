@@ -2,21 +2,34 @@
 export type ChainType = "ethereum" | "solana";
 export type NetworkMode = "mainnet" | "testnet";
 
-export interface Chain {
-  id: string;
-  name: string;
+// Token configuration
+export interface TokenConfig {
   symbol: string;
-  type: ChainType;
+  decimals: number;
+  address?: string; // Only for non-native tokens (e.g., USDC contract address)
 }
 
-// Unified chain group (mainnet + testnet pair)
-export interface ChainGroup {
-  id: string; // e.g., "ethereum", "base"
-  name: string; // Display name, e.g., "Ethereum", "Base"
-  symbol: string;
+// Network-specific configuration
+export interface NetworkConfig {
+  caip2: string;
+  explorerUrl: string;
+  explorerSuffix?: string;
+  rpcUrl?: string; // Required if privyChainId is not set
+  privyChainId?: string; // Chain ID used by Privy API (e.g., "sepolia" for Ethereum testnet)
+}
+
+// Unified chain configuration
+// If BOTH mainnet.privyChainId AND testnet.privyChainId are set, rpcUrl is optional
+// Otherwise, rpcUrl is required for networks without privyChainId
+export interface ChainConfig {
+  name: string;
   type: ChainType;
-  mainnet: string; // chain ID for mainnet
-  testnet: string; // chain ID for testnet
+  mainnet: NetworkConfig;
+  testnet: NetworkConfig;
+  tokens: {
+    native: TokenConfig;
+    usdc?: TokenConfig;
+  };
 }
 
 // Wallet types
@@ -79,7 +92,8 @@ export interface TransactionStatusResponse {
 export interface TransferRequest {
   walletAddress: string;
   amount: number;
-  chain: string;
+  chainId: string;
+  networkMode: NetworkMode;
 }
 
 export interface TransferResponse {

@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { privy, ETHEREUM_WALLET_ID, SOLANA_WALLET_ID } from "@/lib/privy";
 import { parseUnits } from "viem";
-import { getChainConfig, buildExplorerUrl } from "@/lib/config/chains";
-import type { TransferRequest, TransferResponse } from "@/types";
+import { getChain, getNetwork, buildExplorerUrl } from "@/lib/config/chains";
+import type { TransferResponse, NetworkMode } from "@/types";
 import {
   PublicKey,
   SystemProgram,
@@ -10,21 +10,35 @@ import {
   LAMPORTS_PER_SOL,
 } from "@solana/web3.js";
 
+interface TransferRequestBody {
+  walletAddress: string;
+  amount: number;
+  chainId: string;
+  networkMode: NetworkMode;
+}
+
 export async function POST(request: NextRequest) {
   // Parse and validate request
-  const { walletAddress, amount, chain }: TransferRequest = await request.json();
+  const { walletAddress, amount, chainId, networkMode }: TransferRequestBody = await request.json();
 
-  const chainConfig = getChainConfig(chain);
-  if (!chainConfig) {
+  const chain = getChain(chainId);
+  if (!chain) {
     return NextResponse.json({ error: "Invalid chain" }, { status: 400 });
   }
 
+  const network = getNetwork(chainId, networkMode);
+  if (!network) {
+    return NextResponse.json({ error: "Invalid network mode" }, { status: 400 });
+  }
+
+  const decimals = chain.tokens.native.decimals;
+
   try {
-    if (chainConfig.type === "ethereum") {
-      const valueInWei = parseUnits(amount.toString(), chainConfig.decimals);
+    if (chain.type === "ethereum") {
+      const valueInWei = parseUnits(amount.toString(), decimals);
 
       const result = await privy.wallets().ethereum().sendTransaction(ETHEREUM_WALLET_ID, {
-        caip2: chainConfig.caip2,
+        caip2: network.caip2,
         params: {
           transaction: {
             to: walletAddress,
@@ -39,15 +53,15 @@ export async function POST(request: NextRequest) {
       const response: TransferResponse = {
         success: true,
         transactionId: result.transaction_id,
-        chain,
+        chain: chainId,
         hash: result.hash,
-        explorerUrl: buildExplorerUrl(chain, result.hash)!,
+        explorerUrl: buildExplorerUrl(chainId, networkMode, result.hash)!,
         amount,
         to: walletAddress,
       };
 
       return NextResponse.json(response);
-    } else if (chainConfig.type === "solana") {
+    } else if (chain.type === "solana") {
       // Get wallet address from Privy
       const solanaWallet = await privy.wallets().get(SOLANA_WALLET_ID);
       const fromPubkey = new PublicKey(solanaWallet.address);
@@ -72,16 +86,16 @@ export async function POST(request: NextRequest) {
 
       // Sign and send via Privy
       const result = await privy.wallets().solana().signAndSendTransaction(SOLANA_WALLET_ID, {
-        caip2: chainConfig.caip2,
+        caip2: network.caip2,
         transaction: serialized,
       });
 
       return NextResponse.json({
         success: true,
         transactionId: result.transaction_id || "",
-        chain,
+        chain: chainId,
         hash: result.hash,
-        explorerUrl: buildExplorerUrl(chain, result.hash)!,
+        explorerUrl: buildExplorerUrl(chainId, networkMode, result.hash)!,
         amount,
         to: walletAddress,
       } as TransferResponse);
