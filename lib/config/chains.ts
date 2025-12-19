@@ -8,6 +8,7 @@ export const CHAINS: Chain[] = [
   { id: "optimism", name: "Optimism", symbol: "ETH", type: "ethereum" },
   { id: "arbitrum", name: "Arbitrum One", symbol: "ETH", type: "ethereum" },
   { id: "polygon", name: "Polygon", symbol: "POL", type: "ethereum" },
+  { id: "abstract", name: "Abstract", symbol: "ETH", type: "ethereum" },
   { id: "solana", name: "Solana", symbol: "SOL", type: "solana" },
   // Testnets
   { id: "sepolia", name: "Sepolia", symbol: "ETH", type: "ethereum" },
@@ -15,6 +16,7 @@ export const CHAINS: Chain[] = [
   { id: "optimism_sepolia", name: "Optimism Sepolia", symbol: "ETH", type: "ethereum" },
   { id: "arbitrum_sepolia", name: "Arbitrum Sepolia", symbol: "ETH", type: "ethereum" },
   { id: "polygon_amoy", name: "Polygon Amoy", symbol: "POL", type: "ethereum" },
+  { id: "abstract_testnet", name: "Abstract Testnet", symbol: "ETH", type: "ethereum" },
   { id: "solana_devnet", name: "Solana Devnet", symbol: "SOL", type: "solana" },
 ];
 
@@ -27,6 +29,23 @@ export interface ChainConfig {
     url: string;
     suffix?: string;
   };
+  // Alchemy RPC path for chains not supported by Privy's balance endpoint
+  // Will be combined with ALCHEMY_API_KEY env var
+  alchemyRpcPath?: string;
+}
+
+// Build full RPC URL from Alchemy path
+export function getRpcUrl(chainId: string): string | null {
+  const config = CHAIN_CONFIG[chainId];
+  if (!config?.alchemyRpcPath) return null;
+  
+  const apiKey = process.env.ALCHEMY_API_KEY;
+  if (!apiKey) {
+    console.warn("ALCHEMY_API_KEY not set");
+    return null;
+  }
+  
+  return `${config.alchemyRpcPath}${apiKey}`;
 }
 
 export const CHAIN_CONFIG: Record<string, ChainConfig> = {
@@ -60,6 +79,13 @@ export const CHAIN_CONFIG: Record<string, ChainConfig> = {
     type: "ethereum",
     decimals: 18,
     explorer: { url: "https://polygonscan.com/tx/" },
+  },
+  abstract: {
+    caip2: "eip155:2741",
+    type: "ethereum",
+    decimals: 18,
+    explorer: { url: "https://abscan.org/tx/" },
+    alchemyRpcPath: "https://abstract-mainnet.g.alchemy.com/v2/",
   },
   solana: {
     caip2: "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
@@ -97,6 +123,13 @@ export const CHAIN_CONFIG: Record<string, ChainConfig> = {
     type: "ethereum",
     decimals: 18,
     explorer: { url: "https://amoy.polygonscan.com/tx/" },
+  },
+  abstract_testnet: {
+    caip2: "eip155:11124",
+    type: "ethereum",
+    decimals: 18,
+    explorer: { url: "https://sepolia.abscan.org/tx/" },
+    alchemyRpcPath: "https://abstract-testnet.g.alchemy.com/v2/",
   },
   solana_devnet: {
     caip2: "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
