@@ -1,26 +1,147 @@
 @import "tailwindcss";
+@import "tw-animate-css";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+@custom-variant dark (&:is(.dark *));
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+:root {
+  --radius: 0.625rem;
+
+  /* Background Colors */
+  --background: #020713;
+  --foreground: #f8f8f8;
+  
+  /* Card - elevated background */
+  --card: #1a2230;
+  --card-foreground: #f8f8f8;
+  
+  /* Popover - elevated background */
+  --popover: #1a2230;
+  --popover-foreground: #f8f8f8;
+  
+  /* Primary - interactive */
+  --primary: #8b86ff;
+  --primary-foreground: #020713;
+  
+  /* Secondary - subtle background */
+  --secondary: #0e1522;
+  --secondary-foreground: #f8f8f8;
+  
+  /* Muted */
+  --muted: #0e1522;
+  --muted-foreground: #9ba2ae;
+  
+  /* Accent - hover state */
+  --accent: #101724;
+  --accent-foreground: #f8f8f8;
+  
+  /* Destructive - error */
+  --destructive: #ef4444;
+  
+  /* Borders */
+  --border: #1f2937;
+  --input: #1f2937;
+  --ring: #8b86ff;
+  
+  /* Data Visualization */
+  --chart-1: #2c6b5c;
+  --chart-2: #663f23;
+  --chart-3: #4a376c;
+  --chart-4: #18506f;
+  --chart-5: #714f6a;
+  
+  /* Sidebar */
+  --sidebar: #0e1522;
+  --sidebar-foreground: #f8f8f8;
+  --sidebar-primary: #8b86ff;
+  --sidebar-primary-foreground: #020713;
+  --sidebar-accent: #101724;
+  --sidebar-accent-foreground: #f8f8f8;
+  --sidebar-border: #1f2937;
+  --sidebar-ring: #8b86ff;
+
+  /* Extended palette custom properties */
+  --color-bg-default: #020713;
+  --color-bg-default-hover: #101724;
+  --color-bg-elevated: #1a2230;
+  --color-bg-elevated-hover: #242b3b;
+  --color-bg-subtle: #0e1522;
+  --color-bg-interactive: #8b86ff;
+  --color-bg-interactive-hover: #7873e5;
+  --color-bg-success: #0e3e2d;
+  --color-bg-warning: #373827;
+  --color-bg-error: #2e0c18;
+  --color-bg-info: #384060;
+  
+  --color-text-default: #f8f8f8;
+  --color-text-muted: #9ba2ae;
+  --color-text-placeholder: #7b8491;
+  --color-text-inverse: #020713;
+  --color-text-success: #aceecb;
+  --color-text-warning: #fef9a0;
+  --color-text-error: #fca5a5;
+  --color-text-interactive: #a29eff;
+  
+  --color-icon-default: #f8f8f8;
+  --color-icon-muted: #9ba2ae;
+  --color-icon-subtle: #7b8491;
+  --color-icon-success: #88e3b5;
+  --color-icon-warning: #fdf27b;
+  --color-icon-error: #ef4444;
+  --color-icon-interactive: #8b86ff;
+  
+  --color-border-default: #1f2937;
+  --color-border-strong: #70738f;
+  --color-border-success: #337056;
+  --color-border-warning: #72703d;
+  --color-border-error: #67181c;
+  --color-border-interactive: #8b86ff;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
   }
-}
-
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  body {
+    @apply bg-background text-foreground;
+  }
 }
