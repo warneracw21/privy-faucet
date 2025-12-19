@@ -14,27 +14,8 @@ const nextConfig: NextConfig = {
     "@walletconnect/logger",
     "@walletconnect/utils",
   ],
-  webpack: (config, { isServer }) => {
-    // Ignore test files in node_modules
-    config.module.rules.push({
-      test: /\.test\.(js|mjs|ts)$/,
-      loader: "ignore-loader",
-    });
-
-    // Handle pino/thread-stream issues
-    if (!isServer) {
-      config.resolve.fallback = {
-        ...config.resolve.fallback,
-        fs: false,
-        net: false,
-        tls: false,
-        child_process: false,
-        worker_threads: false,
-      };
-    }
-
-    return config;
-  },
+  // Turbopack config (Next.js 16+ uses Turbopack by default)
+  turbopack: {},
 };
 
 export default nextConfig;
