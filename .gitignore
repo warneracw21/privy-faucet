@@ -42,3 +42,5 @@ next-env.d.ts
 
 # internal
 /requests
+
+/lib/generated/prisma

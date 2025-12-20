@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getTransactionStatus, isTransactionFinal } from "@/lib/transaction";
 import { buildExplorerUrlFromCaip2 } from "@/lib/config/chains";
+import { prisma } from "@/lib/prisma";
+import { Status } from "@prisma/client";
 import type { TransactionStatusResponse } from "@/types";
 
 export async function GET(
@@ -19,6 +21,16 @@ export async function GET(
     const explorerUrl = transaction.transaction_hash
       ? buildExplorerUrlFromCaip2(transaction.caip2, transaction.transaction_hash)
       : null;
+
+    // Update withdrawal status in the database
+    try {
+      await prisma.withdrawal.updateMany({
+        where: { transactionId },
+        data: { status: transaction.status as Status },
+      });
+    } catch (dbError) {
+      console.error("Failed to update withdrawal status:", dbError);
+    }
 
     const response: TransactionStatusResponse = {
       id: transaction.id,

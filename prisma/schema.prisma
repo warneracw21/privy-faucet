@@ -1,0 +1,49 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Asset {
+  NATIVE
+  USDC
+}
+
+enum Status {
+  pending
+  broadcasted
+  confirmed
+  finalized
+  execution_reverted
+  failed
+  replaced
+  provider_error
+}
+
+model Withdrawal {
+  id            String   @id @default(uuid())
+  user          String
+  chain         String
+  asset         String
+  amount        Float
+  transactionId String
+  timestamp     DateTime @default(now())
+  status        Status   @default(pending)
+  error         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([user])
+  @@index([chain])
+  @@index([chain, asset])
+  @@index([user, chain])
+}

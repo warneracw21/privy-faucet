@@ -8,9 +8,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { useBalance } from "@/hooks/use-balance";
 import { useTransactionStatus, isTransactionSuccessful } from "@/hooks/use-transaction-status";
-import { CHAINS, CHAIN_IDS, getBalanceKey, getSupportedTokens, hasUsdcSupport, type ChainId } from "@/lib/config/chains";
+import { CHAINS, CHAIN_IDS, getBalanceKey, getSupportedTokens, hasUsdcSupport, hasGasSponsorship, type ChainId } from "@/lib/config/chains";
 import type { NetworkMode, PendingTransaction, TokenType } from "@/types";
-import { ChevronDownIcon, MenuIcon, XIcon, CheckIcon, CopyIcon } from "@/components/icons";
+import { ChevronDownIcon, MenuIcon, XIcon, CheckIcon, CopyIcon, GasIcon } from "@/components/icons";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
+import { Loader } from "@/components/loader";
 
 // Format balance: "0" if zero, otherwise up to 3 decimal places
 const formatBalance = (value: number): string => {
@@ -26,7 +28,7 @@ const ETHEREUM_ADDRESS_REGEX = /^0x[a-fA-F0-9]{40}$/;
 const SOLANA_ADDRESS_REGEX = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
 
 export default function Home() {
-  const { authenticated, login, logout, user, getAccessToken } = usePrivy();
+  const { ready, authenticated, login, logout, user, getAccessToken } = usePrivy();
   const { data: balances, isLoading: loading, refetch: refetchBalances } = useBalance(authenticated);
   
   const [networkMode, setNetworkMode] = useState<NetworkMode>("testnet");
@@ -85,7 +87,7 @@ export default function Home() {
   };
 
   const getBalanceForChain = (chainId: ChainId, mode: NetworkMode, tokenType: TokenType = "native", includeSymbol: boolean = true) => {
-    if (!balances) return "—";
+    if (!balances?.balances) return "—";
     
     const chain = CHAINS[chainId];
     if (!chain) return "—";
@@ -98,25 +100,12 @@ export default function Home() {
 
     let value = 0;
 
-    if (chain.type === "ethereum" && balances.ethereum?.balances) {
-      // Find balance matching both chain and asset
-      const balance = balances.ethereum.balances.find(
-        b => b.chain === balanceKeyStr && b.asset === assetKey
-      );
-      if (balance) {
-        const decimals = balance.raw_value_decimals;
-        value = parseFloat(balance.raw_value) / Math.pow(10, decimals);
-      }
-    }
-
-    if (chain.type === "solana" && balances.solana?.balances) {
-      const balance = balances.solana.balances.find(
-        b => b.chain === balanceKeyStr && b.asset === assetKey
-      );
-      if (balance) {
-        const decimals = balance.raw_value_decimals;
-        value = parseFloat(balance.raw_value) / Math.pow(10, decimals);
-      }
+    const balance = balances.balances.find(
+      b => b.chain === balanceKeyStr && b.asset === assetKey
+    );
+    if (balance) {
+      const decimals = balance.raw_value_decimals;
+      value = parseFloat(balance.raw_value) / Math.pow(10, decimals);
     }
 
     const formatted = formatBalance(value);
@@ -124,7 +113,7 @@ export default function Home() {
   };
 
   const getRawBalanceForChain = (chainId: ChainId, mode: NetworkMode, tokenType: TokenType = "native"): number => {
-    if (!balances) return 0;
+    if (!balances?.balances) return 0;
     
     const chain = CHAINS[chainId];
     if (!chain) return 0;
@@ -134,24 +123,12 @@ export default function Home() {
       ? chain.tokens.native.symbol.toLowerCase() 
       : "usdc";
 
-    if (chain.type === "ethereum" && balances.ethereum?.balances) {
-      const balance = balances.ethereum.balances.find(
-        b => b.chain === balanceKeyStr && b.asset === assetKey
-      );
-      if (balance) {
-        const decimals = balance.raw_value_decimals;
-        return parseFloat(balance.raw_value) / Math.pow(10, decimals);
-      }
-    }
-
-    if (chain.type === "solana" && balances.solana?.balances) {
-      const balance = balances.solana.balances.find(
-        b => b.chain === balanceKeyStr && b.asset === assetKey
-      );
-      if (balance) {
-        const decimals = balance.raw_value_decimals;
-        return parseFloat(balance.raw_value) / Math.pow(10, decimals);
-      }
+    const balance = balances.balances.find(
+      b => b.chain === balanceKeyStr && b.asset === assetKey
+    );
+    if (balance) {
+      const decimals = balance.raw_value_decimals;
+      return parseFloat(balance.raw_value) / Math.pow(10, decimals);
     }
 
     return 0;
@@ -247,6 +224,11 @@ export default function Home() {
     }
   };
 
+  // Show loader while Privy is initializing
+  if (!ready) {
+    return <Loader />;
+  }
+
   if (!authenticated) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background p-4">
@@ -274,7 +256,13 @@ export default function Home() {
   const SidebarContent = ({ onChainSelect }: { onChainSelect?: () => void }) => (
     <>
       <div className="mb-4">
-        <h2 className="text-lg font-semibold text-foreground">Chains</h2>
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-foreground">Chains</h2>
+          <span className="flex items-center gap-1 text-xs text-muted-foreground">
+            <GasIcon size={12} />
+            Gas Sponsored
+          </span>
+        </div>
         <p className="text-sm text-muted-foreground">Select a network</p>
       </div>
 
@@ -282,7 +270,7 @@ export default function Home() {
       <div className="mb-4 p-1 bg-muted rounded-lg flex">
         <button
           onClick={() => setNetworkMode("testnet")}
-          className={`flex-1 py-2 px-3 rounded-md text-sm font-medium transition-colors ${
+          className={`flex-1 py-2 px-3 rounded-md text-sm font-medium transition-colors cursor-pointer ${
             networkMode === "testnet"
               ? "bg-background text-foreground shadow-sm"
               : "text-muted-foreground hover:text-foreground"
@@ -292,7 +280,7 @@ export default function Home() {
         </button>
         <button
           onClick={() => setNetworkMode("mainnet")}
-          className={`flex-1 py-2 px-3 rounded-md text-sm font-medium transition-colors ${
+          className={`flex-1 py-2 px-3 rounded-md text-sm font-medium transition-colors cursor-pointer ${
             networkMode === "mainnet"
               ? "bg-background text-foreground shadow-sm"
               : "text-muted-foreground hover:text-foreground"
@@ -315,7 +303,7 @@ export default function Home() {
                 setError(null);
                 onChainSelect?.();
               }}
-              className={`w-full flex items-center justify-between gap-2 px-3 py-2.5 rounded-lg text-left transition-colors ${
+              className={`w-full flex items-center justify-between gap-2 px-3 py-2.5 rounded-lg text-left transition-colors cursor-pointer ${
                 isSelected
                   ? "bg-primary text-primary-foreground"
                   : "hover:bg-muted text-foreground"
@@ -332,6 +320,21 @@ export default function Home() {
                   />
                 )}
                 <span className="font-medium">{chain.name}</span>
+                {hasGasSponsorship(chainId, networkMode) && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="cursor-help">
+                        <GasIcon 
+                          size={12} 
+                          className={isSelected ? "text-primary-foreground/60" : "text-muted-foreground/70"} 
+                        />
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent side="top">
+                      Gas Sponsored
+                    </TooltipContent>
+                  </Tooltip>
+                )}
               </div>
               <div className="flex items-center gap-1.5 flex-wrap justify-end">
                 {/* Native token balance chip */}
@@ -360,7 +363,7 @@ export default function Home() {
 
       <div className="mt-8 pt-4 border-t border-border">
         <p className="text-xs text-muted-foreground mb-2">
-          Signed in as {user?.email?.address || "User"}
+          Signed in as {user?.email?.address || user?.google?.email || "User"}
         </p>
         <Button variant="outline" size="sm" onClick={logout} className="w-full">
           Sign out
@@ -376,14 +379,14 @@ export default function Home() {
         <div className="flex items-center justify-between">
           <button
             onClick={() => setMobileMenuOpen(true)}
-            className="p-2 -ml-2 hover:bg-muted rounded-lg transition-colors"
+            className="p-2 -ml-2 hover:bg-muted rounded-lg transition-colors cursor-pointer"
             aria-label="Open menu"
           >
             <MenuIcon />
           </button>
           <button
             onClick={() => setMobileMenuOpen(true)}
-            className="flex items-center gap-2 px-3 py-1.5 bg-muted rounded-lg"
+            className="flex items-center gap-2 px-3 py-1.5 bg-muted rounded-lg cursor-pointer"
           >
             {selectedChain.icon && (
               <Image
@@ -418,7 +421,7 @@ export default function Home() {
               <h2 className="font-semibold">Select Chain</h2>
               <button
                 onClick={() => setMobileMenuOpen(false)}
-                className="p-2 -mr-2 hover:bg-muted rounded-lg transition-colors"
+                className="p-2 -mr-2 hover:bg-muted rounded-lg transition-colors cursor-pointer"
                 aria-label="Close menu"
               >
                 <XIcon />
@@ -439,49 +442,27 @@ export default function Home() {
       {/* Main Content */}
       <main className="flex-1 p-4 md:p-8">
         <div className="max-w-xl mx-auto md:mx-0">
-          {/* Faucet Wallet Addresses */}
-          <div className="mb-6 p-3 sm:p-4 rounded-lg bg-muted/50 border border-border">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-0 mb-3">
-              <h3 className="text-sm font-medium">Faucet Wallet Addresses</h3>
-              <span className="text-xs text-muted-foreground italic">Don&apos;t be shy, contribute! 💸</span>
-            </div>
-            <div className="space-y-3">
-              <div className="space-y-1">
-                <span className="text-sm text-muted-foreground">Ethereum</span>
-                <div className="flex items-center gap-2">
-                  <code className="flex-1 text-xs bg-background px-2 py-1.5 rounded font-mono break-all">
-                    {balances?.ethereum?.wallet?.address || "Loading..."}
-                  </code>
-                  {balances?.ethereum?.wallet?.address && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-8 px-2 shrink-0"
-                      onClick={() => copyToClipboard(balances.ethereum!.wallet.address, "ethereum")}
-                    >
-                      {copiedAddress === "ethereum" ? (
-                        <CheckIcon className="text-green-500" />
-                      ) : (
-                        <CopyIcon />
-                      )}
-                    </Button>
-                  )}
-                </div>
+          {/* Deposit Address - only show for ethereum/solana chain types */}
+          {(selectedChain.type === "ethereum" || selectedChain.type === "solana") && (
+            <div className="mb-6 p-3 sm:p-4 rounded-lg bg-muted/50 border border-border">
+              <div className="mb-3">
+                <h3 className="text-sm font-medium">Deposit Address</h3>
+                <p className="text-xs text-muted-foreground">Add funds to the faucet wallet</p>
               </div>
               <div className="space-y-1">
-                <span className="text-sm text-muted-foreground">Solana</span>
+                <span className="text-sm text-muted-foreground capitalize">{selectedChain.type}</span>
                 <div className="flex items-center gap-2">
                   <code className="flex-1 text-xs bg-background px-2 py-1.5 rounded font-mono break-all">
-                    {balances?.solana?.wallet?.address || "Loading..."}
+                    {balances?.wallets?.[selectedChain.type] || "Loading..."}
                   </code>
-                  {balances?.solana?.wallet?.address && (
+                  {balances?.wallets?.[selectedChain.type] && (
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="h-8 px-2 shrink-0"
-                      onClick={() => copyToClipboard(balances.solana!.wallet.address, "solana")}
+                      className="h-8 px-2 shrink-0 cursor-pointer"
+                      onClick={() => copyToClipboard(balances.wallets[selectedChain.type as "ethereum" | "solana"], selectedChain.type)}
                     >
-                      {copiedAddress === "solana" ? (
+                      {copiedAddress === selectedChain.type ? (
                         <CheckIcon className="text-green-500" />
                       ) : (
                         <CopyIcon />
@@ -491,7 +472,7 @@ export default function Home() {
                 </div>
               </div>
             </div>
-          </div>
+          )}
 
           <Card>
             <CardHeader>
@@ -512,7 +493,7 @@ export default function Home() {
                       <button
                         key={token.type}
                         onClick={() => setSelectedToken(token.type)}
-                        className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-colors border ${
+                        className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-colors border cursor-pointer ${
                           selectedToken === token.type
                             ? "bg-primary text-primary-foreground border-primary"
                             : "bg-muted text-muted-foreground border-border hover:bg-muted/80"
@@ -582,7 +563,7 @@ export default function Home() {
                 className="w-full" 
                 size="lg" 
                 onClick={handleRequest}
-                disabled={submitting || !!pendingTx}
+                disabled={submitting || !!pendingTx || !walletAddress.trim() || !amount.trim()}
               >
                 {submitting ? "Submitting..." : pendingTx ? "Confirming..." : `Request ${currentToken.symbol}`}
               </Button>

@@ -7,7 +7,10 @@ export const PrivyProvider = ({ children }: { children: React.ReactNode }) => {
     <BasePrivyProvider 
       appId={process.env.NEXT_PUBLIC_PRIVY_APP_ID!}
       config={{
-        loginMethods: ["email", "google"]
+        loginMethods: ["email", "google"],
+        appearance: {
+          theme: "dark"
+        }
       }}
     >
       {children}
