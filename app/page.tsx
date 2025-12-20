@@ -7,30 +7,16 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { useBalance } from "@/hooks/use-balance";
 import { useTransactionStatus, isTransactionSuccessful } from "@/hooks/use-transaction-status";
-import { CHAINS, CHAIN_IDS, getBalanceKey, type ChainId } from "@/lib/config/chains";
-import type { NetworkMode, PendingTransaction } from "@/types";
+import { CHAINS, CHAIN_IDS, getBalanceKey, getSupportedTokens, hasUsdcSupport, type ChainId } from "@/lib/config/chains";
+import type { NetworkMode, PendingTransaction, TokenType } from "@/types";
+import { ChevronDownIcon, MenuIcon, XIcon, CheckIcon, CopyIcon } from "@/components/icons";
 
-// Icons
-const ChevronDownIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="m6 9 6 6 6-6"/>
-  </svg>
-);
-
-const MenuIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <line x1="4" x2="20" y1="12" y2="12"/>
-    <line x1="4" x2="20" y1="6" y2="6"/>
-    <line x1="4" x2="20" y1="18" y2="18"/>
-  </svg>
-);
-
-const XIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M18 6 6 18"/>
-    <path d="m6 6 12 12"/>
-  </svg>
-);
+// Format balance: "0" if zero, otherwise up to 3 decimal places
+const formatBalance = (value: number): string => {
+  if (value === 0) return "0";
+  // Remove trailing zeros after formatting to 3 decimals
+  return parseFloat(value.toFixed(3)).toString();
+};
 
 // Ethereum address: 0x followed by 40 hex characters
 const ETHEREUM_ADDRESS_REGEX = /^0x[a-fA-F0-9]{40}$/;
@@ -44,6 +30,7 @@ export default function Home() {
   
   const [networkMode, setNetworkMode] = useState<NetworkMode>("testnet");
   const [selectedChainId, setSelectedChainId] = useState<ChainId>(CHAIN_IDS[0]);
+  const [selectedToken, setSelectedToken] = useState<TokenType>("native");
   const [walletAddress, setWalletAddress] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [amount, setAmount] = useState("");
@@ -55,7 +42,16 @@ export default function Home() {
 
   // Get the selected chain config
   const selectedChain = CHAINS[selectedChainId];
-  const nativeToken = selectedChain.tokens.native;
+  const supportedTokens = getSupportedTokens(selectedChainId, networkMode);
+  const currentToken = supportedTokens.find(t => t.type === selectedToken) || supportedTokens[0];
+
+  // Reset token selection when chain/network changes (if selected token not supported)
+  useEffect(() => {
+    const tokens = getSupportedTokens(selectedChainId, networkMode);
+    if (!tokens.find(t => t.type === selectedToken)) {
+      setSelectedToken("native");
+    }
+  }, [selectedChainId, networkMode, selectedToken]);
 
   // Poll for transaction status
   const { data: txStatus } = useTransactionStatus(pendingTx?.id ?? null);
@@ -87,46 +83,60 @@ export default function Home() {
     setTimeout(() => setCopiedAddress(null), 2000);
   };
 
-  const getBalanceForChain = (chainId: ChainId, mode: NetworkMode) => {
+  const getBalanceForChain = (chainId: ChainId, mode: NetworkMode, tokenType: TokenType = "native", includeSymbol: boolean = true) => {
     if (!balances) return "—";
     
     const chain = CHAINS[chainId];
     if (!chain) return "—";
 
     const balanceKeyStr = getBalanceKey(chainId, mode);
-    const symbol = chain.tokens.native.symbol;
+    const symbol = tokenType === "native" ? chain.tokens.native.symbol : "USDC";
+    const assetKey = tokenType === "native" 
+      ? chain.tokens.native.symbol.toLowerCase() 
+      : "usdc";
+
+    let value = 0;
 
     if (chain.type === "ethereum" && balances.ethereum?.balances) {
-      const balance = balances.ethereum.balances.find(b => b.chain === balanceKeyStr);
+      // Find balance matching both chain and asset
+      const balance = balances.ethereum.balances.find(
+        b => b.chain === balanceKeyStr && b.asset === assetKey
+      );
       if (balance) {
         const decimals = balance.raw_value_decimals;
-        const formatted = (parseFloat(balance.raw_value) / Math.pow(10, decimals)).toFixed(4);
-        return `${formatted} ${symbol}`;
+        value = parseFloat(balance.raw_value) / Math.pow(10, decimals);
       }
     }
 
     if (chain.type === "solana" && balances.solana?.balances) {
-      const balance = balances.solana.balances.find(b => b.chain === balanceKeyStr);
+      const balance = balances.solana.balances.find(
+        b => b.chain === balanceKeyStr && b.asset === assetKey
+      );
       if (balance) {
         const decimals = balance.raw_value_decimals;
-        const formatted = (parseFloat(balance.raw_value) / Math.pow(10, decimals)).toFixed(4);
-        return `${formatted} ${symbol}`;
+        value = parseFloat(balance.raw_value) / Math.pow(10, decimals);
       }
     }
 
-    return "0.0000 " + symbol;
+    const formatted = formatBalance(value);
+    return includeSymbol ? `${formatted} ${symbol}` : formatted;
   };
 
-  const getRawBalanceForChain = (chainId: ChainId, mode: NetworkMode): number => {
+  const getRawBalanceForChain = (chainId: ChainId, mode: NetworkMode, tokenType: TokenType = "native"): number => {
     if (!balances) return 0;
     
     const chain = CHAINS[chainId];
     if (!chain) return 0;
 
     const balanceKeyStr = getBalanceKey(chainId, mode);
+    const assetKey = tokenType === "native" 
+      ? chain.tokens.native.symbol.toLowerCase() 
+      : "usdc";
 
     if (chain.type === "ethereum" && balances.ethereum?.balances) {
-      const balance = balances.ethereum.balances.find(b => b.chain === balanceKeyStr);
+      const balance = balances.ethereum.balances.find(
+        b => b.chain === balanceKeyStr && b.asset === assetKey
+      );
       if (balance) {
         const decimals = balance.raw_value_decimals;
         return parseFloat(balance.raw_value) / Math.pow(10, decimals);
@@ -134,7 +144,9 @@ export default function Home() {
     }
 
     if (chain.type === "solana" && balances.solana?.balances) {
-      const balance = balances.solana.balances.find(b => b.chain === balanceKeyStr);
+      const balance = balances.solana.balances.find(
+        b => b.chain === balanceKeyStr && b.asset === assetKey
+      );
       if (balance) {
         const decimals = balance.raw_value_decimals;
         return parseFloat(balance.raw_value) / Math.pow(10, decimals);
@@ -179,9 +191,11 @@ export default function Home() {
       return;
     }
 
-    const availableBalance = getRawBalanceForChain(selectedChainId, networkMode);
+    // Check balance for the selected token
+    const availableBalance = getRawBalanceForChain(selectedChainId, networkMode, selectedToken);
     if (requestedAmount > availableBalance) {
-      setError(`Insufficient faucet balance. Available: ${availableBalance.toFixed(4)} ${nativeToken.symbol}`);
+      const formatted = selectedToken === "usdc" ? availableBalance.toFixed(2) : availableBalance.toFixed(4);
+      setError(`Insufficient faucet balance. Available: ${formatted} ${currentToken.symbol}`);
       return;
     }
 
@@ -205,6 +219,7 @@ export default function Home() {
           amount: requestedAmount,
           chainId: selectedChainId,
           networkMode,
+          token: selectedToken,
         }),
       });
 
@@ -290,6 +305,7 @@ export default function Home() {
         {CHAIN_IDS.map((chainId) => {
           const chain = CHAINS[chainId];
           const isSelected = selectedChainId === chainId;
+          const showUsdc = hasUsdcSupport(chainId, networkMode);
           return (
             <button
               key={chainId}
@@ -298,20 +314,33 @@ export default function Home() {
                 setError(null);
                 onChainSelect?.();
               }}
-              className={`w-full flex items-center justify-between gap-4 px-3 py-2.5 rounded-lg text-left transition-colors ${
+              className={`w-full flex items-center justify-between gap-2 px-3 py-2.5 rounded-lg text-left transition-colors ${
                 isSelected
                   ? "bg-primary text-primary-foreground"
                   : "hover:bg-muted text-foreground"
               }`}
             >
-              <span className="font-medium">{chain.name}</span>
-              <span className={`text-sm font-mono font-semibold px-2 py-0.5 rounded ${
-                isSelected 
-                  ? "bg-primary-foreground/20 text-primary-foreground" 
-                  : "bg-muted text-foreground"
-              }`}>
-                {loading ? "..." : getBalanceForChain(chainId, networkMode)}
-              </span>
+              <span className="font-medium shrink-0">{chain.name}</span>
+              <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                {/* Native token balance chip */}
+                <span className={`text-xs font-mono font-semibold px-2 py-0.5 rounded ${
+                  isSelected 
+                    ? "bg-primary-foreground/20 text-primary-foreground" 
+                    : "bg-muted text-foreground"
+                }`}>
+                  {loading ? "..." : getBalanceForChain(chainId, networkMode, "native")}
+                </span>
+                {/* USDC balance chip */}
+                {showUsdc && (
+                  <span className={`text-xs font-mono font-semibold px-2 py-0.5 rounded ${
+                    isSelected 
+                      ? "bg-blue-500/30 text-primary-foreground" 
+                      : "bg-blue-500/20 text-blue-400"
+                  }`}>
+                    {loading ? "..." : getBalanceForChain(chainId, networkMode, "usdc")}
+                  </span>
+                )}
+              </div>
             </button>
           );
         })}
@@ -410,14 +439,9 @@ export default function Home() {
                       onClick={() => copyToClipboard(balances.ethereum!.wallet.address, "ethereum")}
                     >
                       {copiedAddress === "ethereum" ? (
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-green-500">
-                          <polyline points="20 6 9 17 4 12"/>
-                        </svg>
+                        <CheckIcon className="text-green-500" />
                       ) : (
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <rect width="14" height="14" x="8" y="8" rx="2" ry="2"/>
-                          <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>
-                        </svg>
+                        <CopyIcon />
                       )}
                     </Button>
                   )}
@@ -437,14 +461,9 @@ export default function Home() {
                       onClick={() => copyToClipboard(balances.solana!.wallet.address, "solana")}
                     >
                       {copiedAddress === "solana" ? (
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-green-500">
-                          <polyline points="20 6 9 17 4 12"/>
-                        </svg>
+                        <CheckIcon className="text-green-500" />
                       ) : (
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <rect width="14" height="14" x="8" y="8" rx="2" ry="2"/>
-                          <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>
-                        </svg>
+                        <CopyIcon />
                       )}
                     </Button>
                   )}
@@ -459,13 +478,35 @@ export default function Home() {
                 {selectedChain.name} Faucet
               </CardTitle>
               <CardDescription>
-                Request {nativeToken.symbol} tokens on {selectedChain.name} {networkMode === "mainnet" ? "" : "(Testnet)"}
+                Request tokens on {selectedChain.name} {networkMode === "mainnet" ? "" : "(Testnet)"}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+              {/* Token Selector */}
+              {supportedTokens.length > 1 && (
+                <div>
+                  <label className="text-sm font-medium mb-2 block">Token</label>
+                  <div className="flex gap-2">
+                    {supportedTokens.map((token) => (
+                      <button
+                        key={token.type}
+                        onClick={() => setSelectedToken(token.type)}
+                        className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-colors border ${
+                          selectedToken === token.type
+                            ? "bg-primary text-primary-foreground border-primary"
+                            : "bg-muted text-muted-foreground border-border hover:bg-muted/80"
+                        }`}
+                      >
+                        {token.symbol}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <p className="text-sm text-muted-foreground">Faucet Balance</p>
+                  <p className="text-sm text-muted-foreground">Faucet Balance ({currentToken.symbol})</p>
                   {networkMode === "mainnet" && (
                     <span className="text-xs px-2 py-0.5 rounded-full bg-[var(--color-bg-warning)] text-[var(--color-text-warning)] border border-[var(--color-border-warning)]">
                       ⚠️ Real money!
@@ -473,7 +514,7 @@ export default function Home() {
                   )}
                 </div>
                 <p className="text-2xl font-bold">
-                  {loading ? "Loading..." : getBalanceForChain(selectedChainId, networkMode)}
+                  {loading ? "Loading..." : getBalanceForChain(selectedChainId, networkMode, selectedToken)}
                 </p>
               </div>
 
@@ -497,12 +538,12 @@ export default function Home() {
 
               <div className="space-y-2">
                 <label htmlFor="amount" className="text-sm font-medium">
-                  Amount ({nativeToken.symbol})
+                  Amount ({currentToken.symbol})
                 </label>
                 <Input
                   id="amount"
                   type="number"
-                  step="0.0001"
+                  step={currentToken.decimals === 6 ? "0.01" : "0.0001"}
                   min="0"
                   placeholder="0.00"
                   value={amount}
@@ -522,7 +563,7 @@ export default function Home() {
                 onClick={handleRequest}
                 disabled={submitting || !!pendingTx}
               >
-                {submitting ? "Submitting..." : pendingTx ? "Confirming..." : `Request ${nativeToken.symbol}`}
+                {submitting ? "Submitting..." : pendingTx ? "Confirming..." : `Request ${currentToken.symbol}`}
               </Button>
 
               {/* Pending transaction status */}

@@ -1,12 +1,18 @@
 // Chain types
 export type ChainType = "ethereum" | "solana";
 export type NetworkMode = "mainnet" | "testnet";
+export type TokenType = "native" | "usdc";
 
 // Token configuration
 export interface TokenConfig {
   symbol: string;
   decimals: number;
-  address?: string; // Only for non-native tokens (e.g., USDC contract address)
+}
+
+// ERC20 token configuration with network-specific addresses
+export interface Erc20TokenConfig extends TokenConfig {
+  mainnetAddress?: string; // Contract address on mainnet
+  testnetAddress?: string; // Contract address on testnet
 }
 
 // Network-specific configuration
@@ -16,6 +22,7 @@ export interface NetworkConfig {
   explorerSuffix?: string;
   rpcUrl?: string; // Required if privyChainId is not set
   privyChainId?: string; // Chain ID used by Privy API (e.g., "sepolia" for Ethereum testnet)
+  gasSponsorship?: boolean;
 }
 
 // Unified chain configuration
@@ -28,7 +35,7 @@ export interface ChainConfig {
   testnet: NetworkConfig;
   tokens: {
     native: TokenConfig;
-    usdc?: TokenConfig;
+    usdc?: Erc20TokenConfig;
   };
 }
 
@@ -94,6 +101,7 @@ export interface TransferRequest {
   amount: number;
   chainId: string;
   networkMode: NetworkMode;
+  token: TokenType; // "native" or "usdc"
 }
 
 export interface TransferResponse {

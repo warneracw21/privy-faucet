@@ -13,6 +13,7 @@
     "@privy-io/react-auth": "^3.8.1",
     "@radix-ui/react-slot": "^1.2.4",
     "@solana-program/system": "^0.10.0",
+    "@solana/spl-token": "^0.4.14",
     "@solana/web3.js": "^1.98.4",
     "@tanstack/react-query": "^5.90.12",
     "class-variance-authority": "^0.7.1",

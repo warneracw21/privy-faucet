@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { privy, ETHEREUM_WALLET_ID, headers, SOLANA_WALLET_ID } from "@/lib/privy";
-import { getBalances, RpcBalanceResult } from "@/lib/balance";
-import { getPrivyChainIds, getCustomRpcChains } from "@/lib/config/chains";
+import { getBalances, getErc20Balances, RpcBalanceResult } from "@/lib/balance";
+import { getPrivyChainIds, getCustomRpcChains, getCustomRpcChainsWithUsdc } from "@/lib/config/chains";
 
 export async function GET(request: NextRequest) {
   // Get wallet addresses
@@ -13,8 +13,11 @@ export async function GET(request: NextRequest) {
 
   // Fetch balances from Privy for supported EVM chains
   const ethereumEndpoint = new URL(`https://auth.privy.io/v1/wallets/${ETHEREUM_WALLET_ID}/balance`);
+  // Native assets
   ethereumEndpoint.searchParams.append("asset", "eth");
   ethereumEndpoint.searchParams.append("asset", "pol");
+  // USDC (Privy supports USDC on all their chains)
+  ethereumEndpoint.searchParams.append("asset", "usdc");
 
   // Add all Privy-supported EVM chains (mainnet + testnet)
   [...privyChains.evm.mainnet, ...privyChains.evm.testnet].forEach(chain =>
@@ -24,6 +27,7 @@ export async function GET(request: NextRequest) {
   // Fetch balances from Privy for supported Solana chains
   const solanaEndpoint = new URL(`https://auth.privy.io/v1/wallets/${SOLANA_WALLET_ID}/balance`);
   solanaEndpoint.searchParams.append("asset", "sol");
+  solanaEndpoint.searchParams.append("asset", "usdc"); // Solana USDC
 
   // Add all Privy-supported Solana chains (mainnet + testnet)
   [...privyChains.solana.mainnet, ...privyChains.solana.testnet].forEach(chain =>
@@ -44,9 +48,10 @@ export async function GET(request: NextRequest) {
   const customRpcTestnet = getCustomRpcChains("testnet");
   const allCustomRpcChains = [...customRpcMainnet, ...customRpcTestnet];
 
-  let customBalances: RpcBalanceResult[] = [];
+  // Fetch native token balances
+  let customNativeBalances: RpcBalanceResult[] = [];
   if (allCustomRpcChains.length > 0) {
-    customBalances = await getBalances(
+    customNativeBalances = await getBalances(
       allCustomRpcChains.map(chain => ({
         rpcUrl: chain.rpcUrl,
         address: ethereumWallet.address,
@@ -57,10 +62,30 @@ export async function GET(request: NextRequest) {
     );
   }
 
+  // Fetch USDC balances for custom RPC chains
+  const customRpcUsdcMainnet = getCustomRpcChainsWithUsdc("mainnet");
+  const customRpcUsdcTestnet = getCustomRpcChainsWithUsdc("testnet");
+  const allCustomRpcUsdcChains = [...customRpcUsdcMainnet, ...customRpcUsdcTestnet];
+
+  let customUsdcBalances: RpcBalanceResult[] = [];
+  if (allCustomRpcUsdcChains.length > 0) {
+    customUsdcBalances = await getErc20Balances(
+      allCustomRpcUsdcChains.map(chain => ({
+        rpcUrl: chain.rpcUrl,
+        walletAddress: ethereumWallet.address,
+        tokenAddress: chain.usdcAddress,
+        chainId: chain.balanceKey,
+        symbol: "usdc",
+        decimals: 6,
+      }))
+    );
+  }
+
   // Merge custom balances into ethereum data
   const mergedEthereumBalances = [
     ...(ethereumData.balances || []),
-    ...customBalances,
+    ...customNativeBalances,
+    ...customUsdcBalances,
   ];
 
   return NextResponse.json({
