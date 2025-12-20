@@ -193,13 +193,15 @@ export const CHAINS = {
     icon: "/chain-icons/monad.png",
     mainnet: {
       caip2: "eip155:143",
-      explorerUrl: "https://monadvision.com/tx/",
+      explorerUrl: "https://monad.socialscan.io/tx/",
       rpcUrl: `https://monad-mainnet.g.alchemy.com/v2/${process.env.ALCHEMY_API_KEY}`,
+      gasSponsorship: true,
     },
     testnet: {
       caip2: "eip155:10143", // Testnet chain ID - update when available
-      explorerUrl: "https://testnet.monadvision.com/tx/",
+      explorerUrl: "https://monad-testnet.socialscan.io/tx/",
       rpcUrl: `https://monad-testnet.g.alchemy.com/v2/${process.env.ALCHEMY_API_KEY}`,
+      gasSponsorship: true,
     },
     tokens: {
       native: { symbol: "MON", decimals: 18 },
