@@ -1,0 +1,2 @@
+-- AlterTable: Convert amount from TEXT to DOUBLE PRECISION
+ALTER TABLE "Withdrawal" ALTER COLUMN "amount" TYPE DOUBLE PRECISION USING "amount"::DOUBLE PRECISION;

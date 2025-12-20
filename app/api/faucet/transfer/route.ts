@@ -17,6 +17,8 @@ import {
   getAccount,
   TokenAccountNotFoundError,
 } from "@solana/spl-token";
+import { prisma } from "@/lib/prisma";
+import { extractPrivyUserId, formatChainNetwork } from "@/lib/auth";
 
 // ERC20 transfer ABI
 const ERC20_TRANSFER_ABI = [
@@ -40,6 +42,11 @@ interface TransferRequestBody {
 }
 
 export async function POST(request: NextRequest) {
+  const userId = request.headers.get("x-user-id");
+  if (!userId) {
+    return NextResponse.json({ error: "User ID is required" }, { status: 401 });
+  }
+
   // Parse and validate request
   const { walletAddress, amount, chainId, networkMode, token = "native" }: TransferRequestBody = await request.json();
 
@@ -63,6 +70,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
+    let response: TransferResponse;
     if (chain.type === "ethereum") {
       let txParams: { to: string; value?: string; data?: string };
 
@@ -100,7 +108,7 @@ export async function POST(request: NextRequest) {
 
       console.log(`Transaction submitted: ${result.transaction_id}, hash: ${result.hash}, sponsored: ${sponsored}`);
 
-      const response: TransferResponse = {
+      response = {
         success: true,
         transactionId: result.transaction_id,
         chain: chainId,
@@ -110,7 +118,6 @@ export async function POST(request: NextRequest) {
         to: walletAddress,
       };
 
-      return NextResponse.json(response);
     } else if (chain.type === "solana") {
       const solanaWallet = await privy.wallets().get(SOLANA_WALLET_ID);
       const fromPubkey = new PublicKey(solanaWallet.address);
@@ -133,9 +140,9 @@ export async function POST(request: NextRequest) {
       } else {
         // SPL Token (USDC) transfer
         const mintPubkey = new PublicKey(usdcAddress!);
-        
+
         // Get RPC URL for Solana (use Alchemy with API key)
-        const rpcUrl = networkMode === "mainnet" 
+        const rpcUrl = networkMode === "mainnet"
           ? `https://solana-mainnet.g.alchemy.com/v2/${process.env.ALCHEMY_API_KEY}`
           : `https://solana-devnet.g.alchemy.com/v2/${process.env.ALCHEMY_API_KEY}`;
         const connection = new Connection(rpcUrl, "confirmed");
@@ -190,7 +197,7 @@ export async function POST(request: NextRequest) {
 
       console.log(`Solana transaction submitted: ${result.transaction_id}, hash: ${result.hash}, sponsored: ${solanaSponsored}`);
 
-      return NextResponse.json({
+      response = {
         success: true,
         transactionId: result.transaction_id || "",
         chain: chainId,
@@ -198,10 +205,27 @@ export async function POST(request: NextRequest) {
         explorerUrl: buildExplorerUrl(chainId, networkMode, result.hash)!,
         amount,
         to: walletAddress,
-      } as TransferResponse);
+      };
+    } else {
+      return NextResponse.json({ error: "Unsupported chain type" }, { status: 400 });
     }
 
-    return NextResponse.json({ error: "Unsupported chain type" }, { status: 400 });
+    try {
+      await prisma.withdrawal.create({
+        data: {
+          user: extractPrivyUserId(userId),
+          chain: formatChainNetwork(chainId, networkMode),
+          asset: isNative ? "NATIVE" : "USDC",
+          amount: parseFloat(String(amount)),
+          transactionId: response.transactionId || "",
+        },
+      });
+    } catch (error) {
+      console.error("Failed to create withdrawal:", error);
+    }
+
+    return NextResponse.json(response);
+
   } catch (error) {
     console.error("Transfer failed:", error);
     return NextResponse.json(
