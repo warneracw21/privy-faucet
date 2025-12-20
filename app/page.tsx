@@ -388,7 +388,7 @@ export default function Home() {
 
       <div className="mt-8 pt-4 border-t border-border">
         <p className="text-xs text-muted-foreground mb-2">
-          Signed in as {user?.email?.address || "User"}
+          Signed in as {user?.email?.address || user?.google?.email || "User"}
         </p>
         <Button variant="outline" size="sm" onClick={logout} className="w-full">
           Sign out
