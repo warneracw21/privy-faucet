@@ -212,6 +212,32 @@ export const CHAINS = {
     },
   },
 
+  // HyperEVM (Hyperliquid) - uses custom RPC (not supported by Privy balance API)
+  hyperevm: {
+    name: "HyperEVM",
+    type: "ethereum",
+    icon: "/chain-icons/hyperliquid.png",
+    mainnet: {
+      caip2: "eip155:998",
+      explorerUrl: "https://hyperliquid.xyz/tx/",
+      rpcUrl: `https://hyperliquid-mainnet.g.alchemy.com/v2/${process.env.ALCHEMY_API_KEY}`,
+    },
+    testnet: {
+      caip2: "eip155:998", // Update when testnet chain ID is different
+      explorerUrl: "https://testnet.hyperliquid.xyz/tx/",
+      rpcUrl: `https://hyperliquid-testnet.g.alchemy.com/v2/${process.env.ALCHEMY_API_KEY}`,
+    },
+    tokens: {
+      native: { symbol: "HYPE", decimals: 18 },
+      usdc: {
+        symbol: "USDC",
+        decimals: 6,
+        mainnetAddress: "0xb88339CB7199b77E23DB6E890353E22632Ba630f",
+        testnetAddress: "0x2B3370eE501B4a559b57D449569354196457D8Ab",
+      },
+    },
+  },
+
   solana: {
     name: "Solana",
     type: "solana",
