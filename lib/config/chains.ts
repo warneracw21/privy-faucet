@@ -140,6 +140,25 @@ export const CHAINS = {
     },
   },
 
+  // Monad - high-performance EVM L1 (not supported by Privy balance API)
+  monad: {
+    name: "Monad",
+    type: "ethereum",
+    mainnet: {
+      caip2: "eip155:143",
+      explorerUrl: "https://monadvision.com/tx/",
+      rpcUrl: `https://monad-mainnet.g.alchemy.com/v2/${process.env.ALCHEMY_API_KEY}`,
+    },
+    testnet: {
+      caip2: "eip155:10143", // Testnet chain ID - update when available
+      explorerUrl: "https://testnet.monadvision.com/tx/",
+      rpcUrl: `https://monad-testnet.g.alchemy.com/v2/${process.env.ALCHEMY_API_KEY}`,
+    },
+    tokens: {
+      native: { symbol: "MON", decimals: 18 },
+    },
+  },
+
   solana: {
     name: "Solana",
     type: "solana",
