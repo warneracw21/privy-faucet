@@ -31,6 +31,7 @@ export interface NetworkConfig {
 export interface ChainConfig {
   name: string;
   type: ChainType;
+  icon?: string; // Path to chain icon (e.g., "/chain-icons/ethereum.png")
   mainnet: NetworkConfig;
   testnet: NetworkConfig;
   tokens: {

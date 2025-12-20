@@ -34,6 +34,7 @@ export const CHAINS = {
   ethereum: {
     name: "Ethereum",
     type: "ethereum",
+    icon: "/chain-icons/ethereum.png",
     mainnet: {
       caip2: "eip155:1",
       explorerUrl: "https://etherscan.io/tx/",
@@ -60,6 +61,7 @@ export const CHAINS = {
   base: {
     name: "Base",
     type: "ethereum",
+    icon: "/chain-icons/base.png",
     mainnet: {
       caip2: "eip155:8453",
       explorerUrl: "https://basescan.org/tx/",
@@ -86,6 +88,7 @@ export const CHAINS = {
   optimism: {
     name: "Optimism",
     type: "ethereum",
+    icon: "/chain-icons/optimism.png",
     mainnet: {
       caip2: "eip155:10",
       explorerUrl: "https://optimistic.etherscan.io/tx/",
@@ -112,6 +115,7 @@ export const CHAINS = {
   arbitrum: {
     name: "Arbitrum",
     type: "ethereum",
+    icon: "/chain-icons/arbitrum.png",
     mainnet: {
       caip2: "eip155:42161",
       explorerUrl: "https://arbiscan.io/tx/",
@@ -138,6 +142,7 @@ export const CHAINS = {
   polygon: {
     name: "Polygon",
     type: "ethereum",
+    icon: "/chain-icons/polygon.png",
     mainnet: {
       caip2: "eip155:137",
       explorerUrl: "https://polygonscan.com/tx/",
@@ -165,6 +170,7 @@ export const CHAINS = {
   abstract: {
     name: "Abstract",
     type: "ethereum",
+    icon: "/chain-icons/abstract.png",
     mainnet: {
       caip2: "eip155:2741",
       explorerUrl: "https://abscan.org/tx/",
@@ -184,6 +190,7 @@ export const CHAINS = {
   monad: {
     name: "Monad",
     type: "ethereum",
+    icon: "/chain-icons/monad.png",
     mainnet: {
       caip2: "eip155:143",
       explorerUrl: "https://monadvision.com/tx/",
@@ -208,6 +215,7 @@ export const CHAINS = {
   solana: {
     name: "Solana",
     type: "solana",
+    icon: "/chain-icons/solana.png",
     mainnet: {
       caip2: "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
       explorerUrl: "https://explorer.solana.com/tx/",

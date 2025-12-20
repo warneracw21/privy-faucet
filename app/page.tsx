@@ -2,6 +2,7 @@
 
 import { usePrivy } from "@privy-io/react-auth";
 import { useState, useEffect } from "react";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -320,7 +321,18 @@ export default function Home() {
                   : "hover:bg-muted text-foreground"
               }`}
             >
-              <span className="font-medium shrink-0">{chain.name}</span>
+              <div className="flex items-center gap-2 shrink-0">
+                {chain.icon && (
+                  <Image
+                    src={chain.icon}
+                    alt={chain.name}
+                    width={20}
+                    height={20}
+                    className="rounded-full"
+                  />
+                )}
+                <span className="font-medium">{chain.name}</span>
+              </div>
               <div className="flex items-center gap-1.5 flex-wrap justify-end">
                 {/* Native token balance chip */}
                 <span className={`text-xs font-mono font-semibold px-2 py-0.5 rounded ${
@@ -373,6 +385,15 @@ export default function Home() {
             onClick={() => setMobileMenuOpen(true)}
             className="flex items-center gap-2 px-3 py-1.5 bg-muted rounded-lg"
           >
+            {selectedChain.icon && (
+              <Image
+                src={selectedChain.icon}
+                alt={selectedChain.name}
+                width={20}
+                height={20}
+                className="rounded-full"
+              />
+            )}
             <span className="font-medium">{selectedChain.name}</span>
             <span className="text-xs text-muted-foreground">
               {networkMode === "mainnet" ? "Mainnet" : "Testnet"}
@@ -411,7 +432,7 @@ export default function Home() {
       )}
 
       {/* Desktop Sidebar */}
-      <aside className="hidden md:block w-80 border-r border-border bg-card p-4 shrink-0">
+      <aside className="hidden md:block w-96 border-r border-border bg-card p-4 shrink-0">
         <SidebarContent />
       </aside>
 
