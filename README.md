@@ -26,11 +26,6 @@ Create a `.env.local` file:
 # Privy Configuration
 NEXT_PUBLIC_PRIVY_APP_ID=your_privy_app_id
 PRIVY_APP_SECRET=your_privy_app_secret
-PRIVY_VERIFICATION_KEY="-----BEGIN PUBLIC KEY-----\n...\n-----END PUBLIC KEY-----"
-
-# Wallet IDs (from Privy dashboard)
-ETHEREUM_WALLET_ID=your_ethereum_wallet_id
-SOLANA_WALLET_ID=your_solana_wallet_id
 
 # Optional: For chains not supported by Privy balance API (e.g., Abstract)
 ALCHEMY_API_KEY=your_alchemy_api_key
