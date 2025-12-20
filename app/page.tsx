@@ -87,7 +87,7 @@ export default function Home() {
   };
 
   const getBalanceForChain = (chainId: ChainId, mode: NetworkMode, tokenType: TokenType = "native", includeSymbol: boolean = true) => {
-    if (!balances) return "—";
+    if (!balances?.balances) return "—";
     
     const chain = CHAINS[chainId];
     if (!chain) return "—";
@@ -100,25 +100,12 @@ export default function Home() {
 
     let value = 0;
 
-    if (chain.type === "ethereum" && balances.ethereum?.balances) {
-      // Find balance matching both chain and asset
-      const balance = balances.ethereum.balances.find(
-        b => b.chain === balanceKeyStr && b.asset === assetKey
-      );
-      if (balance) {
-        const decimals = balance.raw_value_decimals;
-        value = parseFloat(balance.raw_value) / Math.pow(10, decimals);
-      }
-    }
-
-    if (chain.type === "solana" && balances.solana?.balances) {
-      const balance = balances.solana.balances.find(
-        b => b.chain === balanceKeyStr && b.asset === assetKey
-      );
-      if (balance) {
-        const decimals = balance.raw_value_decimals;
-        value = parseFloat(balance.raw_value) / Math.pow(10, decimals);
-      }
+    const balance = balances.balances.find(
+      b => b.chain === balanceKeyStr && b.asset === assetKey
+    );
+    if (balance) {
+      const decimals = balance.raw_value_decimals;
+      value = parseFloat(balance.raw_value) / Math.pow(10, decimals);
     }
 
     const formatted = formatBalance(value);
@@ -126,7 +113,7 @@ export default function Home() {
   };
 
   const getRawBalanceForChain = (chainId: ChainId, mode: NetworkMode, tokenType: TokenType = "native"): number => {
-    if (!balances) return 0;
+    if (!balances?.balances) return 0;
     
     const chain = CHAINS[chainId];
     if (!chain) return 0;
@@ -136,24 +123,12 @@ export default function Home() {
       ? chain.tokens.native.symbol.toLowerCase() 
       : "usdc";
 
-    if (chain.type === "ethereum" && balances.ethereum?.balances) {
-      const balance = balances.ethereum.balances.find(
-        b => b.chain === balanceKeyStr && b.asset === assetKey
-      );
-      if (balance) {
-        const decimals = balance.raw_value_decimals;
-        return parseFloat(balance.raw_value) / Math.pow(10, decimals);
-      }
-    }
-
-    if (chain.type === "solana" && balances.solana?.balances) {
-      const balance = balances.solana.balances.find(
-        b => b.chain === balanceKeyStr && b.asset === assetKey
-      );
-      if (balance) {
-        const decimals = balance.raw_value_decimals;
-        return parseFloat(balance.raw_value) / Math.pow(10, decimals);
-      }
+    const balance = balances.balances.find(
+      b => b.chain === balanceKeyStr && b.asset === assetKey
+    );
+    if (balance) {
+      const decimals = balance.raw_value_decimals;
+      return parseFloat(balance.raw_value) / Math.pow(10, decimals);
     }
 
     return 0;
@@ -467,49 +442,27 @@ export default function Home() {
       {/* Main Content */}
       <main className="flex-1 p-4 md:p-8">
         <div className="max-w-xl mx-auto md:mx-0">
-          {/* Deposit Addresses */}
-          <div className="mb-6 p-3 sm:p-4 rounded-lg bg-muted/50 border border-border">
-            <div className="mb-3">
-              <h3 className="text-sm font-medium">Deposit Addresses</h3>
-              <p className="text-xs text-muted-foreground">Add funds to the faucet wallets</p>
-            </div>
-            <div className="space-y-3">
-              <div className="space-y-1">
-                <span className="text-sm text-muted-foreground">Ethereum</span>
-                <div className="flex items-center gap-2">
-                  <code className="flex-1 text-xs bg-background px-2 py-1.5 rounded font-mono break-all">
-                    {balances?.ethereum?.wallet?.address || "Loading..."}
-                  </code>
-                  {balances?.ethereum?.wallet?.address && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-8 px-2 shrink-0"
-                      onClick={() => copyToClipboard(balances.ethereum!.wallet.address, "ethereum")}
-                    >
-                      {copiedAddress === "ethereum" ? (
-                        <CheckIcon className="text-green-500" />
-                      ) : (
-                        <CopyIcon />
-                      )}
-                    </Button>
-                  )}
-                </div>
+          {/* Deposit Address - only show for ethereum/solana chain types */}
+          {(selectedChain.type === "ethereum" || selectedChain.type === "solana") && (
+            <div className="mb-6 p-3 sm:p-4 rounded-lg bg-muted/50 border border-border">
+              <div className="mb-3">
+                <h3 className="text-sm font-medium">Deposit Address</h3>
+                <p className="text-xs text-muted-foreground">Add funds to the faucet wallet</p>
               </div>
               <div className="space-y-1">
-                <span className="text-sm text-muted-foreground">Solana</span>
+                <span className="text-sm text-muted-foreground capitalize">{selectedChain.type}</span>
                 <div className="flex items-center gap-2">
                   <code className="flex-1 text-xs bg-background px-2 py-1.5 rounded font-mono break-all">
-                    {balances?.solana?.wallet?.address || "Loading..."}
+                    {balances?.wallets?.[selectedChain.type] || "Loading..."}
                   </code>
-                  {balances?.solana?.wallet?.address && (
+                  {balances?.wallets?.[selectedChain.type] && (
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="h-8 px-2 shrink-0"
-                      onClick={() => copyToClipboard(balances.solana!.wallet.address, "solana")}
+                      className="h-8 px-2 shrink-0 cursor-pointer"
+                      onClick={() => copyToClipboard(balances.wallets[selectedChain.type as "ethereum" | "solana"], selectedChain.type)}
                     >
-                      {copiedAddress === "solana" ? (
+                      {copiedAddress === selectedChain.type ? (
                         <CheckIcon className="text-green-500" />
                       ) : (
                         <CopyIcon />
@@ -519,7 +472,7 @@ export default function Home() {
                 </div>
               </div>
             </div>
-          </div>
+          )}
 
           <Card>
             <CardHeader>

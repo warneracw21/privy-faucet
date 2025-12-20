@@ -81,22 +81,19 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  // Merge custom balances into ethereum data
-  const mergedEthereumBalances = [
+  // Merge all balances into a single array
+  const balances = [
     ...(ethereumData.balances || []),
+    ...(solanaData.balances || []),
     ...customNativeBalances,
     ...customUsdcBalances,
   ];
 
   return NextResponse.json({
-    ethereum: {
-      ...ethereumData,
-      balances: mergedEthereumBalances,
-      wallet: ethereumWallet,
-    },
-    solana: {
-      ...solanaData,
-      wallet: solanaWallet,
+    balances,
+    wallets: {
+      ethereum: ethereumWallet.address,
+      solana: solanaWallet.address,
     },
   });
 }

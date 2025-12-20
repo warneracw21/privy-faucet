@@ -55,14 +55,12 @@ export interface BalanceEntry {
   display_values: { [key: string]: string };
 }
 
-export interface ChainBalances {
-  balances: BalanceEntry[];
-  wallet: WalletInfo;
-}
-
 export interface BalanceData {
-  ethereum?: ChainBalances;
-  solana?: ChainBalances;
+  balances: BalanceEntry[];
+  wallets: {
+    ethereum: string;
+    solana: string;
+  };
 }
 
 // Transaction types
