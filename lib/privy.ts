@@ -2,6 +2,8 @@ import {PrivyClient} from "@privy-io/node";
 
 export const PRIVY_APP_ID = process.env.NEXT_PUBLIC_PRIVY_APP_ID!;
 export const PRIVY_APP_SECRET = process.env.PRIVY_APP_SECRET!;
+export const DEPOSIT_ADDRESS_MOVER_AUTH_ID = process.env.DEPOSIT_ADDRESS_MOVER_AUTH_ID!;
+export const DEPOSIT_ADDRESS_MOVER_AUTH_KEY = process.env.DEPOSIT_ADDRESS_MOVER_AUTH_KEY!;
 
 export const ETHEREUM_WALLET_ID = 'gpfa5rglocsj2rhibycfmrk9';
 export const SOLANA_WALLET_ID = 'wqejevr32w3kmtacsvtcgopd';

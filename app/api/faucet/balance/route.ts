@@ -1,12 +1,58 @@
 import { NextRequest, NextResponse } from "next/server";
-import { privy, ETHEREUM_WALLET_ID, headers, SOLANA_WALLET_ID } from "@/lib/privy";
+import { privy, ETHEREUM_WALLET_ID, headers, SOLANA_WALLET_ID, DEPOSIT_ADDRESS_MOVER_AUTH_ID } from "@/lib/privy";
 import { getBalances, getErc20Balances, RpcBalanceResult } from "@/lib/balance";
 import { getPrivyChainIds, getCustomRpcChains, getCustomRpcChainsWithUsdc } from "@/lib/config/chains";
+import type { LinkedAccountEmbeddedWallet, Wallet } from "@privy-io/node";
 
 export async function GET(request: NextRequest) {
+  const userId = request.headers.get("x-user-id");
+  if (!userId) {
+    return NextResponse.json({ error: "User ID is required" }, { status: 401 });
+  }
+
+  // Fetch deposit addresses for the user
+  const user = await privy.users()._get(userId);
+  if (!user) {
+    return NextResponse.json({ error: "User not found" }, { status: 404 });
+  }
+
+  // Get user deposit addresses (create if not found)
+  let ethereumWallet = user.linked_accounts.find(acc => acc.type === "wallet" && acc.chain_type === "ethereum" && acc.connector_type === "privy") as LinkedAccountEmbeddedWallet | Wallet | undefined;
+  let solanaWallet = user.linked_accounts.find(acc => acc.type === "wallet" && acc.chain_type === "solana" && acc.connector_type === "privy") as LinkedAccountEmbeddedWallet | Wallet | undefined;
+
+  if (!ethereumWallet || !solanaWallet) {
+    if (!DEPOSIT_ADDRESS_MOVER_AUTH_ID) {
+      return NextResponse.json({ error: "Deposit address mover auth ID is required" }, { status: 400 });
+    }
+    if (!ethereumWallet) {
+      ethereumWallet = await privy.wallets().create({
+        chain_type: "ethereum",
+        owner: { user_id: userId },
+        additional_signers: [
+          {
+            signer_id: DEPOSIT_ADDRESS_MOVER_AUTH_ID,
+            override_policy_ids: []
+          }
+        ]
+      });
+    }
+    if (!solanaWallet) {
+      solanaWallet = await privy.wallets().create({
+        chain_type: "solana",
+        owner: { user_id: userId },
+        additional_signers: [
+          {
+            signer_id: DEPOSIT_ADDRESS_MOVER_AUTH_ID,
+            override_policy_ids: []
+          }
+        ]
+      });
+    }
+  }
+
   // Get wallet addresses
-  const ethereumWallet = await privy.wallets().get(ETHEREUM_WALLET_ID);
-  const solanaWallet = await privy.wallets().get(SOLANA_WALLET_ID);
+  const ethereumWalletAddress = ethereumWallet?.address;
+  const solanaWalletAddress = solanaWallet?.address;
 
   // Get Privy-supported chain IDs (derived from config)
   const privyChains = getPrivyChainIds();
@@ -92,8 +138,8 @@ export async function GET(request: NextRequest) {
   return NextResponse.json({
     balances,
     wallets: {
-      ethereum: ethereumWallet.address,
-      solana: solanaWallet.address,
+      ethereum: ethereumWalletAddress,
+      solana: solanaWalletAddress,
     },
   });
 }
